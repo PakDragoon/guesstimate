@@ -220,3 +220,53 @@ export function verdict(points) {
   if (points >= 35) return 'Ballpark';
   return 'Way off';
 }
+
+// ---------- Guesses from the network ----------
+
+// Guesses arrive from other players' browsers, so the host checks them before scoring.
+export function validGuess(pz, guess) {
+  if (typeof guess !== 'number' || !Number.isFinite(guess)) return false;
+  switch (pz.kind) {
+    case 'count': return Number.isInteger(guess) && guess >= 0 && guess <= 999;
+    case 'track': return guess >= 0 && guess <= BOX.h;
+    case 'angle': return guess >= -180 && guess <= 180;
+    case 'split': return guess >= 0 && guess <= 1;
+    default: return false;
+  }
+}
+
+// A guess (or the answer, when guess is omitted) written for people.
+export function describe(pz, guess = pz.answer) {
+  if (guess === null || guess === undefined) return '–';
+  switch (pz.kind) {
+    case 'count': return String(Math.round(guess));
+    case 'track': return guess === pz.answer ? 'impact' : `${Math.round(error(pz, guess) * 100)}% off`;
+    case 'angle': return `${Math.round(Math.abs(guess))}°`;
+    case 'split': return `${Math.round(guess * 100)}%`;
+    default: return String(guess);
+  }
+}
+
+// ---------- Daily puzzle ----------
+
+// Everyone gets the same daily set, built from the date. Day 1 is launch day.
+export const LAUNCH_DAY = '2026-11-10';
+export const DAILY = { kinds: KINDS, laps: 1, difficulty: 'normal' };
+
+export function dayKey(date = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+}
+
+export function dayNumber(key) {
+  const utc = (k) => { const [y, m, d] = k.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  return Math.round((utc(key) - utc(LAUNCH_DAY)) / 86400000) + 1;
+}
+
+export function daySeed(key) {
+  let h = 0x811c9dc5;
+  for (const ch of `guesstimate:${key}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  return h >>> 0;
+}
+
+export const dailySet = (key) => makeSet(daySeed(key), DAILY.kinds, DAILY.laps, DAILY.difficulty);

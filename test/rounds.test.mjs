@@ -100,3 +100,27 @@ assert.throws(() => R.makeRound('tempo', 1));
 assert.throws(() => R.makeRound('count', 1, 'insane'));
 
 console.log(`rounds: all checks passed (${checked} puzzles)`);
+
+// 4. Network guesses, labels and the daily set
+const g = Object.fromEntries(R.KINDS.map((k) => [k, R.makeRound(k, 7, 'hard')]));
+assert.ok(R.validGuess(g.count, 40) && !R.validGuess(g.count, 40.5) && !R.validGuess(g.count, -1) && !R.validGuess(g.count, 1000));
+assert.ok(R.validGuess(g.track, 0) && R.validGuess(g.track, R.BOX.h) && !R.validGuess(g.track, R.BOX.h + 1));
+assert.ok(R.validGuess(g.angle, -180) && R.validGuess(g.angle, 45.5) && !R.validGuess(g.angle, 181));
+assert.ok(R.validGuess(g.split, 0.5) && !R.validGuess(g.split, 1.01));
+for (const bad of ['40', null, undefined, NaN, Infinity, {}, [1]]) {
+  for (const kind of R.KINDS) assert.equal(R.validGuess(g[kind], bad), false, `${kind} accepted ${String(bad)}`);
+}
+for (const kind of R.KINDS) assert.equal(R.validGuess(g[kind], g[kind].answer), true, `${kind} rejects its own answer`);
+assert.equal(R.describe(g.angle, -40), '40°');
+assert.equal(R.describe(g.split, 0.371), '37%');
+assert.equal(R.describe(g.count, null), '–');
+
+assert.equal(R.dayNumber('2026-11-10'), 1);
+assert.equal(R.dayNumber('2026-11-11'), 2);
+assert.equal(R.dayNumber('2027-03-29'), 140, 'day numbers ignore daylight saving');
+assert.equal(R.dayKey(new Date(2026, 0, 5)), '2026-01-05');
+assert.deepEqual(R.dailySet('2026-12-01'), R.dailySet('2026-12-01'));
+assert.notDeepEqual(R.dailySet('2026-12-01'), R.dailySet('2026-12-02'));
+assert.deepEqual(R.dailySet('2026-12-01').map((p) => p.kind), R.DAILY.kinds);
+
+console.log('rounds: network, labels and daily checks passed');
