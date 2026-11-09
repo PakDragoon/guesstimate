@@ -26,17 +26,20 @@
     <button class="icon-btn" type="button" data-open="settings" aria-label="Settings">⚙️</button>
   </div>
   <div class="home-inner">
-    <h1 class="logo" aria-label="Guesstimate">
-      <span class="logo-row" id="logo-row" aria-hidden="true"></span>
-      <span class="logo-word" aria-hidden="true">guesstimate</span>
-    </h1>
-    <p class="lede">No rulers, no counting on your fingers. Everyone gets the same puzzle at the same moment, then the reveal measures whose eye was sharpest.</p>
+    <div class="home-intro">
+      <h1 class="logo" aria-label="Guesstimate">
+        <span class="logo-row" id="logo-row" aria-hidden="true"></span>
+        <span class="logo-word" aria-hidden="true">guesstimate</span>
+      </h1>
+      <p class="lede">No rulers, no counting on your fingers. Everyone gets the same puzzle at the same moment, then the reveal measures whose eye was sharpest.</p>
+      <label class="field">Your name
+        <input id="name-input" maxlength="16" autocomplete="nickname" placeholder="e.g. Sara">
+      </label>
+      <p class="error" id="home-error" role="alert"></p>
+      <button class="btn link" type="button" data-open="rules">How to play</button>
+    </div>
 
-    <label class="field">Your name
-      <input id="name-input" maxlength="16" autocomplete="nickname" placeholder="e.g. Sara">
-    </label>
-
-    <div class="choices">
+    <div class="home-cards">
       <section class="choice">
         <h2>Host a room</h2>
         <p>Your browser runs the game. Keep this tab open while you play.</p>
@@ -48,11 +51,7 @@
         <input class="text-input" id="code-input" maxlength="4" autocomplete="off" placeholder="Room code">
         <button class="btn" id="join-btn" type="button">Join room</button>
       </section>
-    </div>
-    <p class="error" id="home-error" role="alert"></p>
-
-    <div class="solo">
-      <section class="solo-card daily" id="daily-card">
+      <section class="choice daily" id="daily-card">
         <div class="solo-head">
           <h2>Daily puzzle</h2>
           <span class="day-no" id="day-no"></span>
@@ -60,8 +59,8 @@
         <p id="daily-status">The same four puzzles for everyone today.</p>
         <button class="btn primary" id="daily-btn" type="button">Play today’s puzzle</button>
       </section>
-      <section class="solo-card">
-        <div class="solo-head"><h2>Practice</h2></div>
+      <section class="choice">
+        <h2>Practice</h2>
         <div class="seg" id="difficulty" role="group" aria-label="Practice difficulty">
           <button type="button" data-value="easy">Easy</button>
           <button type="button" data-value="normal">Normal</button>
@@ -71,7 +70,6 @@
         <button class="btn" id="practice-btn" type="button">Start practice</button>
       </section>
     </div>
-    <button class="btn link" type="button" data-open="rules">How to play</button>
   </div>
 </main>
 
@@ -81,10 +79,14 @@
     <button class="icon-btn" type="button" data-open="settings" aria-label="Settings">⚙️</button>
   </div>
   <div class="lobby-inner">
+   <div class="lobby-room">
     <p class="muted">Room code</p>
     <div class="room-code" id="lobby-code">····</div>
     <button class="btn ghost" id="copy-link" type="button">Copy invite link</button>
     <ul class="roster" id="lobby-players"></ul>
+    <button class="btn link" id="leave-lobby" type="button">Leave room</button>
+   </div>
+   <div class="lobby-setup">
 
     <div id="host-settings" class="host-settings" hidden>
       <div class="seg" id="room-difficulty" role="group" aria-label="Difficulty">
@@ -124,7 +126,7 @@
       <ul class="settings-summary" id="settings-summary"></ul>
       <p class="muted">Waiting for the host to start.</p>
     </div>
-    <button class="btn link" id="leave-lobby" type="button">Leave room</button>
+   </div>
   </div>
 </main>
 
@@ -144,10 +146,6 @@
   </header>
   <div class="progress" id="progress" aria-hidden="true"></div>
   <div class="arena" id="arena">
-    <aside class="scoreboard" id="scoreboard" hidden>
-      <h2>Scores</h2>
-      <ol class="score-list" id="score-list"></ol>
-    </aside>
     <section class="desk">
       <div class="ask-row">
         <span class="kind-badge" id="kind-badge"></span>
@@ -163,7 +161,18 @@
           <span><i>Ref</i><b id="tb-ref"></b></span>
         </div>
       </div>
-      <p class="hint muted" id="play-hint" aria-live="polite"></p>
+    </section>
+    <aside class="scoreboard" id="scoreboard" hidden>
+      <h2>Scores</h2>
+      <ol class="score-list" id="score-list"></ol>
+    </aside>
+    <section class="side">
+      <div class="brief" id="brief">
+        <span class="kind-badge" id="brief-badge"></span>
+        <span><b id="brief-name"></b><span id="brief-how"></span></span>
+      </div>
+      <p class="hint" id="play-hint" aria-live="polite"></p>
+      <div class="controls" id="controls"></div>
       <div class="actions">
         <button class="btn primary wide" id="go-btn" type="button" hidden>Start round</button>
         <button class="btn primary wide" id="lock-btn" type="button" hidden>Lock in</button>
@@ -179,7 +188,7 @@
           </div>
         </div>
         <table class="round-table" id="round-table" hidden>
-          <thead><tr><th scope="col">Player</th><th scope="col">Guess</th><th scope="col">Points</th><th scope="col">Total</th></tr></thead>
+          <thead><tr><th scope="col">Player</th><th scope="col">Guess</th><th scope="col">Pts</th><th scope="col">Total</th></tr></thead>
           <tbody id="round-rows"></tbody>
         </table>
         <button class="btn primary wide" id="next-btn" type="button">Next round</button>
@@ -208,14 +217,18 @@
 <!-- ============ Summary (practice and daily) ============ -->
 <main id="summary" class="screen summary" hidden>
   <div class="summary-inner">
+   <div class="sum-score">
     <p class="muted" id="sum-sub">Average score</p>
     <div class="sum-dial" id="sum-dial"></div>
     <p class="sum-verdict" id="sum-verdict"></p>
     <p class="muted" id="sum-note"></p>
+   </div>
+   <div class="sum-detail">
     <ol class="sum-rounds" id="sum-rounds"></ol>
     <button class="btn primary wide" id="share-btn" type="button" hidden>Share result</button>
     <button class="btn primary wide" id="again-btn" type="button">Play again</button>
     <button class="btn ghost wide" id="home-btn" type="button">Home</button>
+   </div>
   </div>
 </main>
 

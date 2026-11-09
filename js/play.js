@@ -36,11 +36,6 @@ function board(stage, { w = BOX.w, h = BOX.h, cls = '' } = {}) {
   const hatch = el('pattern', { id: `${id}-hatch`, width: 7, height: 7, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
   el('line', { x1: 0, y1: 0, x2: 0, y2: 7, class: 'hatch' }, hatch);
 
-  const sphere = el('radialGradient', { id: `${id}-sphere`, cx: '35%', cy: '30%', r: '70%' }, defs);
-  el('stop', { offset: '0', class: 'sphere-hi' }, sphere);
-  el('stop', { offset: '0.55', class: 'sphere-mid' }, sphere);
-  el('stop', { offset: '1', class: 'sphere-lo' }, sphere);
-
   const fogEdge = el('linearGradient', { id: `${id}-fogedge`, x1: 0, x2: 1, y1: 0, y2: 0 }, defs);
   el('stop', { offset: '0', class: 'fog-0' }, fogEdge);
   el('stop', { offset: '1', class: 'fog-1' }, fogEdge);
@@ -174,17 +169,17 @@ export const TESTS = {
     name: 'Count',
     how: 'Dots flash for a moment. Guess how many there were.',
     ask: (pz) => `How many dots? You get ${(pz.showMs / 1000).toFixed(1)} seconds.`,
-    mount(stage, pz, { ready, submit }) {
+    mount(stage, pz, { ready, submit, controls }) {
       const b = board(stage);
       const dots = el('g', {}, b.inside);
-      for (const d of pz.dots) el('circle', { cx: d.x, cy: d.y, r: d.r, fill: `url(#${b.id}-sphere)` }, dots);
+      for (const d of pz.dots) el('circle', { cx: d.x, cy: d.y, r: d.r, class: 'dot' }, dots);
       // Exposure bar along the top edge, running out with the time
       const bar = el('rect', { x: 0, y: 0, width: b.w, height: 4, class: 'exposure' }, b.inside);
       bar.style.animationDuration = `${pz.showMs}ms`;
       const form = document.createElement('form');
       form.className = 'count-form';
       form.innerHTML = '<label class="sr-only" for="count-guess">Your guess</label><input id="count-guess" class="count-input" type="number" inputmode="numeric" min="0" max="999" placeholder="…" disabled autocomplete="off"><span class="count-unit">dots</span>';
-      stage.append(form);
+      (controls || stage).append(form);
       const input = form.querySelector('input');
       const timer = setTimeout(() => {
         dots.remove();
@@ -204,16 +199,17 @@ export const TESTS = {
     reveal(stage, pz, entries) {
       const b = board(stage);
       grid(b);
-      for (const d of pz.dots) el('circle', { cx: d.x, cy: d.y, r: d.r, fill: `url(#${b.id}-sphere)`, class: 'dimmed' }, b.inside);
-      // Number line under the drawing, with the answer and every guess on it
-      const W = BOX.w, H = 96, base = 42;
-      const s = board(stage, { w: W, h: H, cls: 'strip' });
+      for (const d of pz.dots) el('circle', { cx: d.x, cy: d.y, r: d.r, class: 'dot dimmed' }, b.inside);
+      // Number line in a band across the bottom of the drawing, with the answer and every guess
+      const H = 92, top0 = b.h - H, base = top0 + 40;
+      el('rect', { x: 0, y: top0, width: b.w, height: H, class: 'band-strip' }, b.inside);
+      el('line', { x1: 0, y1: top0, x2: b.w, y2: top0, class: 'band-edge' }, b.inside);
       const guessed = guessedOnly(entries);
       const top = Math.max(pz.answer, ...guessed.map((e) => e.guess)) * 1.15 + 5;
       const step = niceStep(top);
       const max = Math.ceil(top / step) * step;
-      const x = (v) => 22 + (v / max) * (W - 44);
-      const ruler = el('g', { class: 'ruler reveal-late' }, s.inside);
+      const x = (v) => 24 + (v / max) * (b.w - 48);
+      const ruler = el('g', { class: 'ruler reveal-late' }, b.inside);
       el('line', { x1: x(0), y1: base, x2: x(max), y2: base, class: 'rule' }, ruler);
       for (let i = 0; i <= Math.round((max / step) * 2); i++) {
         const v = (i * step) / 2;
@@ -222,14 +218,14 @@ export const TESTS = {
         if (i % 2 === 0 && Math.abs(x(v) - x(pz.answer)) > 16) label(ruler, x(v), base - 13, String(Math.round(v)), { cls: 'tick-lbl' });
       }
       const ax = x(pz.answer);
-      el('path', { d: `M${ax} ${base}l-6 -11h12z`, class: 'answer-tri' }, s.over);
-      label(s.over, ax, base - 15, `${pz.answer}`, { cls: 'answer-lbl' });
-      const lx = spread(guessed.map((e) => x(e.guess)), 30, W - 30, 54);
+      el('path', { d: `M${ax} ${base}l-6 -11h12z`, class: 'answer-tri' }, b.over);
+      label(b.over, ax, base - 15, `${pz.answer}`, { cls: 'answer-lbl' });
+      const lx = spread(guessed.map((e) => x(e.guess)), 30, b.w - 30, 54);
       guessed.forEach((e, i) => {
         const gx = x(e.guess);
-        el('path', { d: `M${gx} ${base + 4}V${base + 18}L${lx[i]} ${base + 28}`, class: `leader pc${e.color}` }, s.inside);
-        pin(s.inside, gx, base, e.color, 4.5);
-        label(s.inside, lx[i], base + 41, `${tag(e)} ${e.guess}`, { color: e.color, cls: 'who' });
+        el('path', { d: `M${gx} ${base + 4}V${base + 16}L${lx[i]} ${base + 25}`, class: `leader pc${e.color}` }, b.inside);
+        pin(b.inside, gx, base, e.color, 4.5);
+        label(b.inside, lx[i], base + 38, `${tag(e)} ${e.guess}`, { color: e.color, cls: 'who' });
       });
     },
   },
@@ -247,7 +243,7 @@ export const TESTS = {
       // Launcher on the left wall
       el('path', { d: `M0 ${pz.y0 - 13}h7v26h-7`, class: 'launcher' }, b.inside);
       const trail = [0.28, 0.16, 0.08].map((o) => el('circle', { r: pz.ballR, cx: pz.x0, cy: pz.y0, class: 'trail', opacity: o }, b.inside));
-      const ball = el('circle', { cx: pz.x0, cy: pz.y0, r: pz.ballR, fill: `url(#${b.id}-sphere)` }, b.inside);
+      const ball = el('circle', { cx: pz.x0, cy: pz.y0, r: pz.ballR, class: 'dot' }, b.inside);
       const mark = reticle(b.over, color);
       mark.setAttribute('visibility', 'hidden');
       let y = null, armed = false, raf = 0;
@@ -290,7 +286,7 @@ export const TESTS = {
       const path = trackPath(pz);
       el('polyline', { points: path.map((p) => p.join(',')).join(' '), class: 'flight draw', pathLength: 1 }, b.inside);
       path.slice(1, -1).forEach(([x, y]) => el('circle', { cx: x, cy: y, r: 3, class: 'bounce reveal-late' }, b.inside));
-      el('circle', { cx: pz.x0, cy: pz.y0, r: pz.ballR, fill: `url(#${b.id}-sphere)`, class: 'dimmed' }, b.inside);
+      el('circle', { cx: pz.x0, cy: pz.y0, r: pz.ballR, class: 'dot dimmed' }, b.inside);
       const guessed = guessedOnly(entries);
       guessed.forEach((e) => reticle(b.over, e.color).setAttribute('transform', `translate(${pz.wallX} ${e.guess})`));
       answerMark(b.over, pz.wallX, pz.answer);
@@ -309,22 +305,23 @@ export const TESTS = {
 
   angle: {
     name: 'Angle',
-    how: 'Drag the coloured line until the angle between it and the dark line matches the target. Either side works.',
+    how: 'Drag the coloured arm until the angle between it and the dark arm matches the target. Either side works.',
     ask: (pz) => `Make a ${pz.target}° angle`,
     mount(stage, pz, { ready, color }) {
       const b = board(stage);
       const len = ANGLE_LEN[pz.difficulty];
-      el('circle', { cx: pz.pivot.x, cy: pz.pivot.y, r: len, class: 'guide' }, b.inside);
-      ray(b.inside, pz.pivot, pz.baseline, baseLen(pz), 'arm base');
+      dial(b.inside, pz.pivot, len);
+      const wedge = el('path', { class: `wedge pc${color}` }, b.inside);
+      const sweep = el('path', { class: `sweep pc${color}` }, b.inside);
+      arm(b.inside, pz.pivot, pz.baseline, baseLen(pz), 'base');
       let a = pz.start;
-      const mine = ray(b.inside, pz.pivot, pz.baseline + a, len, `arm pc${color}`);
-      const knob = el('g', { class: `knob pc${color}` }, b.inside);
-      el('circle', { r: 13, class: 'knob-halo' }, knob);
-      el('circle', { r: 8.5, class: 'knob-ring' }, knob);
-      compass(b.inside, pz.pivot);
+      const mine = arm(b.inside, pz.pivot, pz.baseline + a, len, `pc${color}`, true);
+      rivet(b.inside, pz.pivot);
       const draw = () => {
-        setRay(mine, pz.pivot, pz.baseline + a, len);
-        knob.setAttribute('transform', `translate(${mine.getAttribute('x2')} ${mine.getAttribute('y2')})`);
+        const signed = a > 180 ? a - 360 : a;
+        mine.turn(pz.baseline + a);
+        wedge.setAttribute('d', sector(pz.pivot, pz.baseline, signed, len - 8));
+        sweep.setAttribute('d', arcPath(pz.pivot, pz.baseline, signed, 34));
       };
       draw();
       b.svg.classList.add('aim');
@@ -341,20 +338,22 @@ export const TESTS = {
       const b = board(stage);
       grid(b);
       const len = ANGLE_LEN[pz.difficulty];
+      dial(b.inside, pz.pivot, len);
       const guessed = guessedOnly(entries);
       // Show the answer on each side somebody used
       const sides = [...new Set(guessed.map((e) => (e.guess < 0 ? -1 : 1)))];
       if (!sides.length) sides.push(1);
-      for (const side of sides) {
-        protractor(b.inside, pz, side);
-        ray(b.inside, pz.pivot, pz.baseline + side * pz.target, len + 14, 'arm answer-arm');
+      if (entries.length === 1 && guessed.length) {
+        el('path', { d: sector(pz.pivot, pz.baseline, guessed[0].guess, len - 8), class: `wedge pc${guessed[0].color}` }, b.inside);
       }
-      ray(b.inside, pz.pivot, pz.baseline, baseLen(pz), 'arm base');
-      guessed.forEach((e) => ray(b.inside, pz.pivot, pz.baseline + e.guess, len, `arm thin pc${e.color}`));
-      compass(b.inside, pz.pivot);
+      for (const side of sides) protractor(b.inside, pz, side);
+      arm(b.inside, pz.pivot, pz.baseline, baseLen(pz), 'base');
+      for (const side of sides) ray(b.inside, pz.pivot, pz.baseline + side * pz.target, len + 16, 'answer-arm');
+      guessed.forEach((e) => arm(b.inside, pz.pivot, pz.baseline + e.guess, len, `thin pc${e.color}`, true));
+      rivet(b.inside, pz.pivot);
       guessed.forEach((e) => {
         const w = rad(pz.baseline + e.guess);
-        const lx = pz.pivot.x + Math.cos(w) * (len + 16), ly = pz.pivot.y - Math.sin(w) * (len + 16);
+        const lx = pz.pivot.x + Math.cos(w) * (len + 22), ly = pz.pivot.y - Math.sin(w) * (len + 22);
         const anchor = Math.cos(w) > 0.3 ? 'start' : Math.cos(w) < -0.3 ? 'end' : 'middle';
         label(b.over, lx, ly + 4, `${tag(e)} ${Math.round(Math.abs(e.guess))}°`, { color: e.color, cls: 'who', anchor });
       });
@@ -363,19 +362,25 @@ export const TESTS = {
 
   split: {
     name: 'Split',
-    how: 'Mark the point that sits the given fraction of the way along the line, starting from the round end.',
+    how: 'Slide the marker to the point that sits the given fraction of the way along the bar, starting from the round end.',
     ask: (pz) => `Mark ${pz.label} of the way along`,
     mount(stage, pz, { ready, color }) {
       const b = board(stage);
-      bar(b.inside, pz);
-      const mark = caliper(b.inside, color);
-      mark.setAttribute('visibility', 'hidden');
+      const s = slider(b.inside, pz);
+      const fill = el('rect', { x: 0, y: -6, height: 12, rx: 6, width: 0, class: `slide-fill pc${color}` }, s.g);
+      s.caps();
+      const thumb = el('g', { class: `thumb pc${color}`, visibility: 'hidden' }, s.g);
+      el('circle', { r: 15, class: 'thumb-halo' }, thumb);
+      el('circle', { cx: 1, cy: 3, r: 11, class: 'shadow' }, thumb);
+      el('circle', { r: 10.5, class: 'thumb-ring' }, thumb);
+      el('line', { x1: 0, y1: -4.5, x2: 0, y2: 4.5, class: 'thumb-grip' }, thumb);
       let t = null;
       const ux = pz.b.x - pz.a.x, uy = pz.b.y - pz.a.y, uu = ux * ux + uy * uy;
       const place = (v) => {
         t = Math.min(1, Math.max(0, v));
-        mark.setAttribute('transform', placeOn(pz, t));
-        mark.setAttribute('visibility', 'visible');
+        fill.setAttribute('width', Math.max(0, t * s.len));
+        thumb.setAttribute('transform', `translate(${t * s.len} 0)`);
+        thumb.setAttribute('visibility', 'visible');
         ready(true);
       };
       b.svg.classList.add('aim');
@@ -385,33 +390,36 @@ export const TESTS = {
     reveal(stage, pz, entries) {
       const b = board(stage);
       grid(b);
-      bar(b.inside, pz);
-      const ang = Math.atan2(pz.b.y - pz.a.y, pz.b.x - pz.a.x);
-      const nx = Math.sin(ang), ny = -Math.cos(ang);   // unit normal pointing up from the line
-      const at = (t) => [pz.a.x + (pz.b.x - pz.a.x) * t, pz.a.y + (pz.b.y - pz.a.y) * t];
-      // Ruler scale along the line
-      const scale = el('g', { class: 'ruler reveal-late' }, b.inside);
-      for (let i = 0; i <= 20; i++) {
-        const [x, y] = at(i / 20);
-        const long = i % 5 === 0 ? 13 : i % 2 === 0 ? 8 : 5;
-        el('line', { x1: x + nx * 8, y1: y + ny * 8, x2: x + nx * (8 + long), y2: y + ny * (8 + long), class: 'tick' }, scale);
-        if (i % 5 === 0 && i > 0 && i < 20) label(scale, x + nx * 29, y + ny * 29 + 4, `${i * 5}%`, { cls: 'tick-lbl' });
+      const s = slider(b.inside, pz);
+      const guessed = guessedOnly(entries);
+      if (entries.length === 1 && guessed.length) {
+        el('rect', { x: 0, y: -6, height: 12, rx: 6, width: guessed[0].guess * s.len, class: `slide-fill soft pc${guessed[0].color}` }, s.g);
       }
+      s.caps();
+      // Ruler scale above the bar, in the bar's own frame
+      const scale = el('g', { class: 'ruler reveal-late' }, s.g);
+      for (let i = 0; i <= 20; i++) {
+        const x = (i / 20) * s.len;
+        const long = i % 5 === 0 ? 12 : i % 2 === 0 ? 7 : 4.5;
+        el('line', { x1: x, y1: -12, x2: x, y2: -12 - long, class: 'tick' }, scale);
+        if (i % 5 === 0 && i > 0 && i < 20) label(scale, x, -30, `${i * 5}%`, { cls: 'tick-lbl' });
+      }
+      const ang = Math.atan2(pz.b.y - pz.a.y, pz.b.x - pz.a.x);
+      const nx = Math.sin(ang), ny = -Math.cos(ang);   // unit normal pointing up from the bar
+      const at = (t) => [pz.a.x + (pz.b.x - pz.a.x) * t, pz.a.y + (pz.b.y - pz.a.y) * t];
       const [tx, ty] = at(pz.answer);
-      el('line', { x1: tx + nx * 6, y1: ty + ny * 6, x2: tx + nx * 52, y2: ty + ny * 52, class: 'ext reveal-late' }, b.over);
-      el('line', { x1: pz.a.x + nx * 10, y1: pz.a.y + ny * 10, x2: pz.a.x + nx * 52, y2: pz.a.y + ny * 52, class: 'ext reveal-late' }, b.over);
-      dimension(b.over, pz.a.x + nx * 46, pz.a.y + ny * 46, tx + nx * 46, ty + ny * 46,
+      el('line', { x1: tx + nx * 8, y1: ty + ny * 8, x2: tx + nx * 56, y2: ty + ny * 56, class: 'ext reveal-late' }, b.over);
+      el('line', { x1: pz.a.x + nx * 12, y1: pz.a.y + ny * 12, x2: pz.a.x + nx * 56, y2: pz.a.y + ny * 56, class: 'ext reveal-late' }, b.over);
+      dimension(b.over, pz.a.x + nx * 50, pz.a.y + ny * 50, tx + nx * 50, ty + ny * 50,
         pz.percent ? pz.label : `${pz.label} = ${pct(pz.answer)}`);
       answerMark(b.over, tx, ty);
-      const guessed = guessedOnly(entries);
-      const len = Math.hypot(pz.b.x - pz.a.x, pz.b.y - pz.a.y);
-      const lt = spread(guessed.map((e) => e.guess), -0.04, 1.04, 58 / len);
+      const lt = spread(guessed.map((e) => e.guess), -0.04, 1.04, 58 / s.len);
       guessed.forEach((e, i) => {
         const [gx, gy] = at(e.guess);
         const [lx, ly] = at(lt[i]);
-        el('path', { d: `M${gx - nx * 9} ${gy - ny * 9}L${lx - nx * 28} ${ly - ny * 28}`, class: `leader pc${e.color}` }, b.over);
-        pin(b.over, gx, gy, e.color, 5);
-        label(b.over, lx - nx * 39, ly - ny * 39 + 4, `${tag(e)} ${pct(e.guess)}`, { color: e.color, cls: 'who' });
+        el('path', { d: `M${gx - nx * 12} ${gy - ny * 12}L${lx - nx * 30} ${ly - ny * 30}`, class: `leader pc${e.color}` }, b.over);
+        pin(b.over, gx, gy, e.color, 6);
+        label(b.over, lx - nx * 41, ly - ny * 41 + 4, `${tag(e)} ${pct(e.guess)}`, { color: e.color, cls: 'who' });
       });
     },
   },
@@ -434,24 +442,66 @@ function reticle(parent, color) {
 }
 
 function ray(parent, pivot, worldDeg, len, cls) {
-  const line = el('line', { x1: pivot.x, y1: pivot.y, class: cls }, parent);
-  setRay(line, pivot, worldDeg, len);
-  return line;
+  const x = pivot.x + Math.cos(rad(worldDeg)) * len, y = pivot.y - Math.sin(rad(worldDeg)) * len;
+  return el('line', { x1: pivot.x, y1: pivot.y, x2: x, y2: y, class: cls }, parent);
 }
 
-function setRay(line, pivot, worldDeg, len) {
-  line.setAttribute('x2', pivot.x + Math.cos(rad(worldDeg)) * len);
-  line.setAttribute('y2', pivot.y - Math.sin(rad(worldDeg)) * len);
+// The round plate the arms turn on. No ticks, so it can't be used to measure.
+function dial(parent, p, len) {
+  el('circle', { cx: p.x, cy: p.y, r: len + 14, class: 'plate' }, parent);
+  el('circle', { cx: p.x, cy: p.y, r: len + 9.5, class: 'bezel' }, parent);
+  el('circle', { cx: p.x, cy: p.y, r: len + 14, class: 'plate-rim' }, parent);
+  el('circle', { cx: p.x, cy: p.y, r: 46, class: 'plate-inner' }, parent);
 }
 
-function compass(parent, p) {
-  el('circle', { cx: p.x, cy: p.y, r: 7.5, class: 'pivot' }, parent);
-  el('circle', { cx: p.x, cy: p.y, r: 2.6, class: 'pivot-eye' }, parent);
+const armAt = (p, worldDeg) => `translate(${p.x} ${p.y}) rotate(${-worldDeg})`;
+
+// An arm like a drafting-compass leg: a rounded strip with a groove, and a grip at the end.
+function arm(parent, p, worldDeg, len, cls, grip = false) {
+  const thin = cls.includes('thin');
+  const h = thin ? 7 : 13;
+  const g = el('g', { class: `arm ${cls}`, transform: armAt(p, worldDeg) }, parent);
+  const shade = el('g', { class: 'shadow' }, g);
+  el('rect', { x: -h / 2, y: -h / 2, width: len + h / 2, height: h, rx: h / 2 }, shade);
+  if (grip) el('circle', { cx: len, cy: 0, r: thin ? 5.5 : 12.5 }, shade);
+  el('rect', { x: -h / 2, y: -h / 2, width: len + h / 2, height: h, rx: h / 2, class: 'arm-body' }, g);
+  if (!thin) el('line', { x1: 16, y1: 0, x2: len - 12, y2: 0, class: 'arm-groove' }, g);
+  if (grip) {
+    el('circle', { cx: len, cy: 0, r: thin ? 5.5 : 12.5, class: 'arm-grip' }, g);
+    if (!thin) el('circle', { cx: len, cy: 0, r: 4, class: 'arm-grip-dot' }, g);
+  }
+  // Keep the shadow falling down-right on screen whichever way the arm points
+  g.turn = (deg) => {
+    g.setAttribute('transform', armAt(p, deg));
+    shade.setAttribute('transform', `rotate(${deg}) translate(2 3.5) rotate(${-deg})`);
+  };
+  g.turn(worldDeg);
+  return g;
 }
 
-// Protractor band from the dark line round to the answer, with a tick every 5°.
+function rivet(parent, p) {
+  el('circle', { cx: p.x + 1.5, cy: p.y + 2.5, r: 12, class: 'shadow' }, parent);
+  el('circle', { cx: p.x, cy: p.y, r: 12, class: 'rivet' }, parent);
+  el('circle', { cx: p.x, cy: p.y, r: 4.5, class: 'rivet-eye' }, parent);
+}
+
+// Filled pie slice from the dark arm, turning by deg (negative = clockwise on screen).
+function sector(p, base, deg, r) {
+  if (Math.abs(deg) < 0.5) return '';
+  const a = rad(base), b = rad(base + deg);
+  const sweep = deg > 0 ? 0 : 1, large = Math.abs(deg) > 180 ? 1 : 0;
+  return `M${p.x} ${p.y}L${p.x + Math.cos(a) * r} ${p.y - Math.sin(a) * r}A${r} ${r} 0 ${large} ${sweep} ${p.x + Math.cos(b) * r} ${p.y - Math.sin(b) * r}Z`;
+}
+
+function arcPath(p, base, deg, r) {
+  if (Math.abs(deg) < 0.5) return '';
+  const a = rad(base), b = rad(base + deg);
+  return `M${p.x + Math.cos(a) * r} ${p.y - Math.sin(a) * r}A${r} ${r} 0 0 ${deg > 0 ? 0 : 1} ${p.x + Math.cos(b) * r} ${p.y - Math.sin(b) * r}`;
+}
+
+// Protractor band from the dark arm round to the answer, with a tick every 5°.
 function protractor(parent, pz, side) {
-  const r0 = 44, r1 = 58;
+  const r0 = 46, r1 = 60;
   const g = el('g', { class: 'protractor reveal-late' }, parent);
   const from = pz.baseline, to = pz.baseline + side * pz.target;
   const p = (deg, r) => [pz.pivot.x + Math.cos(rad(deg)) * r, pz.pivot.y - Math.sin(rad(deg)) * r];
@@ -468,27 +518,18 @@ function protractor(parent, pz, side) {
   label(g, lx, ly + 4, `${pz.target}°`, { cls: 'answer-lbl' });
 }
 
-function bar(parent, pz) {
-  el('line', { x1: pz.a.x, y1: pz.a.y, x2: pz.b.x, y2: pz.b.y, class: 'bar' }, parent);
-  el('line', { x1: pz.a.x, y1: pz.a.y, x2: pz.b.x, y2: pz.b.y, class: 'bar-shine' }, parent);
-  el('circle', { cx: pz.a.x, cy: pz.a.y, r: 9, class: 'bar-start' }, parent);
-  el('circle', { cx: pz.a.x, cy: pz.a.y, r: 3, class: 'bar-start-eye' }, parent);
+// The Split bar, drawn in its own frame: x runs from 0 (round end) to len along the bar.
+function slider(parent, pz) {
+  const len = Math.hypot(pz.b.x - pz.a.x, pz.b.y - pz.a.y);
   const deg = (Math.atan2(pz.b.y - pz.a.y, pz.b.x - pz.a.x) * 180) / Math.PI;
-  el('rect', { x: pz.b.x - 3, y: pz.b.y - 11, width: 6, height: 22, rx: 2, class: 'bar-end', transform: `rotate(${deg} ${pz.b.x} ${pz.b.y})` }, parent);
-}
-
-function placeOn(pz, t) {
-  const x = pz.a.x + (pz.b.x - pz.a.x) * t, y = pz.a.y + (pz.b.y - pz.a.y) * t;
-  const deg = (Math.atan2(pz.b.y - pz.a.y, pz.b.x - pz.a.x) * 180) / Math.PI;
-  return `translate(${x} ${y}) rotate(${deg})`;
-}
-
-// A pointer that sits on the line like the jaw of a caliper.
-function caliper(parent, color) {
-  const g = el('g', { class: `caliper pc${color}` }, parent);
-  el('line', { x1: 0, y1: -24, x2: 0, y2: 16, class: 'cal-hair' }, g);
-  el('path', { d: 'M0 -10L-8 -24H8Z', class: 'cal-jaw' }, g);
-  return g;
+  const g = el('g', { transform: `translate(${pz.a.x} ${pz.a.y}) rotate(${deg})` }, parent);
+  el('rect', { x: -6, y: -6, width: len + 6, height: 12, rx: 6, class: 'slide-track' }, g);
+  const caps = () => {
+    el('circle', { cx: 0, cy: 0, r: 11, class: 'slide-start' }, g);
+    el('circle', { cx: 0, cy: 0, r: 4, class: 'slide-start-eye' }, g);
+    el('rect', { x: len - 3.5, y: -15, width: 7, height: 30, rx: 3.5, class: 'slide-end' }, g);
+  };
+  return { g, len, caps };
 }
 
 // Small line-art icons for each test (logo tiles, pickers, tables).

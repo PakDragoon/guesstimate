@@ -144,11 +144,17 @@ function frame({ mode, index, total, pz, ref, points }) {
   $('kind-badge').className = `kind-badge k-${pz.kind}`;
   $('kind-badge').innerHTML = icon(pz.kind);
   $('play-ask').textContent = TESTS[pz.kind].ask(pz);
+  $('brief').hidden = false;
+  $('brief-badge').className = `kind-badge k-${pz.kind}`;
+  $('brief-badge').innerHTML = icon(pz.kind);
+  $('brief-name').textContent = TESTS[pz.kind].name;
+  $('brief-how').textContent = TESTS[pz.kind].how;
   $('tb-kind').textContent = TESTS[pz.kind].name;
   $('tb-level').textContent = LEVEL[pz.difficulty];
   $('tb-sheet').textContent = `${index + 1} / ${total}`;
   $('tb-ref').textContent = ref;
   $('stage').replaceChildren();
+  $('controls').replaceChildren();
   $('result').hidden = true;
   $('waiting').textContent = '';
   $('end-round-btn').hidden = true;
@@ -163,6 +169,7 @@ function mount(pz, color, onLock) {
   $('lock-btn').disabled = true;
   $('play-hint').textContent = '';
   $('stage').replaceChildren();
+  $('controls').replaceChildren();
   const lock = () => {
     if (!live || $('lock-btn').disabled) return;
     const guess = live.guess();
@@ -170,10 +177,12 @@ function mount(pz, color, onLock) {
     live = null;
     $('lock-btn').hidden = true;
     $('play-hint').textContent = '';
+    $('controls').querySelectorAll('input').forEach((i) => { i.disabled = true; });
     onLock(guess);
   };
   live = TESTS[pz.kind].mount($('stage'), pz, {
     color,
+    controls: $('controls'),
     ready: (ok) => { $('lock-btn').disabled = !ok; },
     hint: (msg) => { $('play-hint').textContent = msg; },
     submit: lock,
@@ -231,6 +240,7 @@ function showResultHead(pz, guess, points) {
   $('result-verdict').textContent = guess === null || guess === undefined ? 'No guess' : R.verdict(points);
   $('result-answer').textContent = answerLine(pz, guess);
   $('result').hidden = false;
+  $('brief').hidden = true;
 }
 
 /* =========================================================
@@ -254,7 +264,6 @@ function soloIntro() {
   const pz = G.rounds[G.index];
   stopLive();
   frame({ mode: G.mode === 'daily' ? 'Daily' : 'Practice', index: G.index, total: G.rounds.length, pz, ref: G.ref, points: G.results.map((r) => r.points) });
-  $('play-hint').textContent = TESTS[pz.kind].how;
   $('go-btn').hidden = false;
   $('go-btn').focus();
 }
@@ -270,6 +279,7 @@ function soloReveal(pz, guess) {
   const points = R.score(pz, guess);
   G.results.push({ kind: pz.kind, guess, points });
   $('stage').replaceChildren();
+  $('controls').replaceChildren();
   TESTS[pz.kind].reveal($('stage'), pz, [{ name: 'You', color: 0, guess, me: true }]);
   showResultHead(pz, guess, points);
   $('round-table').hidden = true;
@@ -884,7 +894,6 @@ function renderRoomRound(v) {
         $('stage').querySelector('.board')?.classList.add('locked');
         sendGuess(v.index, guess);
       });
-      $('play-hint').textContent = TESTS[pz.kind].how;
       if (v.startsIn > 150) countdown(v.startsIn, start);
       else start();
     }
@@ -917,6 +926,7 @@ function renderRoomReveal(v) {
     $('end-round-btn').hidden = true;
     $('play-hint').textContent = '';
     $('stage').replaceChildren();
+    $('controls').replaceChildren();
     TESTS[pz.kind].reveal($('stage'), pz, v.players.map((p) => ({ name: p.name, color: p.color, guess: p.guess, me: p.id === S.myId })));
     showResultHead(pz, mine.guess, mine.points[v.index] ?? 0);
     frameProgress(v.total, v.index, mine.points);
