@@ -16,6 +16,9 @@ const MAX_PLAYERS = 8;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';  // no I or O, easy to read out loud
 const PEER_OPTIONS = { debug: 1 };
 const COUNTDOWN_MS = 3000;
+const PING_MS = 2000;       // players ping the host, and the host pings back
+const AWAY_MS = 9000;       // no ping for this long: the round stops waiting for that player
+const LOST_MS = 12000;      // a player who hears nothing from the host this long reconnects
 const LEVEL = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
 
 const $ = (id) => document.getElementById(id);
@@ -37,6 +40,17 @@ const store = {
 const PREFS = { difficulty: 'normal', kinds: [...R.KINDS], analytics: true, ...store.get('prefs', {}) };
 const ROOM_PREFS = { difficulty: 'normal', kinds: [...R.KINDS], laps: 1, timer: 30, ...store.get('room', {}) };
 const savePrefs = () => store.set('prefs', PREFS);
+
+// Identifies this tab to the host. It survives a refresh (so you get your seat back) but is
+// different for every person, so a colleague with the same name can't take your seat.
+const CLIENT_ID = (() => {
+  const fresh = () => Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+  try {
+    let id = sessionStorage.getItem('guesstimate.client');
+    if (!id) { id = fresh(); sessionStorage.setItem('guesstimate.client', id); }
+    return id;
+  } catch { return fresh(); }
+})();
 const saveRoomPrefs = () => store.set('room', ROOM_PREFS);
 
 /* ---------- Screens, sheets and messages ---------- */
@@ -209,11 +223,13 @@ function countdown(ms, then) {
   countdownTimer = setInterval(tick, 100);
 }
 
-function runClock(endsAt, totalMs) {
+function runClock(endsAt, totalMs, onAlmostOut) {
   clearInterval(clockTimer);
   $('clock').hidden = false;
+  let warned = false;
   const tick = () => {
     const left = Math.max(0, endsAt - performance.now());
+    if (!warned && left <= 350 && onAlmostOut) { warned = true; onAlmostOut(); }
     $('clock-fill').style.strokeDashoffset = String(1 - Math.min(1, left / totalMs));
     $('clock-text').textContent = String(Math.ceil(left / 1000));
     $('clock').classList.toggle('urgent', left <= 5000);
@@ -373,8 +389,8 @@ function goHome() {
 /* =========================================================
    Rooms: hosting
    ========================================================= */
-const S = { myName: '', myId: null, isHost: false, peer: null, hostConn: null, code: '', view: null, leaving: false, roundKey: '', revealKey: '', locked: false, savedGame: '' };
-const H = { room: null, conns: new Map(), deadline: 0 };
+const S = { myName: '', myId: null, isHost: false, peer: null, hostConn: null, code: '', view: null, leaving: false, roundKey: '', revealKey: '', locked: false, savedGame: '', heard: 0, reconnecting: false, pending: null };
+const H = { room: null, conns: new Map(), deadline: 0, seen: new Map() };
 const sets = new Map();
 
 // Every browser builds the round list from the seed and settings.
@@ -435,7 +451,7 @@ function hostCreate(attempt = 0) {
 }
 
 function newPlayer(id, name, isHost, color, uid = null, photo = '') {
-  return { id, name, isHost, color, uid, photo, connected: true, guesses: {}, points: {} };
+  return { id, name, isHost, color, uid, photo, connected: true, away: false, guesses: {}, points: {} };
 }
 
 function cleanPhoto(url) {
@@ -457,25 +473,38 @@ function hostOnConnection(conn) {
 
 function hostOnMessage(conn, msg) {
   if (!msg || typeof msg !== 'object') return;
-  if (msg.t === 'join') hostJoin(conn, msg.name, msg.uid, msg.photo);
+  H.seen.set(conn.peer, Date.now());
+  const back = H.room && H.room.players.find((p) => p.id === conn.peer && p.away);
+  if (back) {
+    back.away = false;
+    hostBroadcast();
+  }
+  if (msg.t === 'ping') return;
+  if (msg.t === 'join') hostJoin(conn, msg.name, msg.uid, msg.photo, msg.client);
   if (msg.t === 'guess') hostGuess(conn.peer, msg.index, msg.guess);
 }
 
-function hostJoin(conn, rawName, uid, photo) {
+function hostJoin(conn, rawName, uid, photo, client) {
   const room = H.room;
   const name = cleanName(rawName) || 'Player';
   const cleanUid = typeof uid === 'string' ? uid.slice(0, 128) : null;
+  const clientId = typeof client === 'string' ? client.slice(0, 40) : '';
 
   // Someone who refreshed or dropped out and comes back with the same name gets their seat
-  // (and their scores) back. A dropped connection can take a few seconds to be noticed,
-  // so this also takes over a seat that still looks connected.
-  const old = room.players.find((p) => !p.isHost && p.name.toLowerCase() === name.toLowerCase());
+  // (and their scores) back: the same tab (after a refresh) or the same Google account may take
+  // the seat over at once; anyone else only once that seat has gone offline. A colleague who
+  // happens to have the same name while the first is still playing gets "Name 2" instead.
+  const old = room.players.find((p) => !p.isHost && p.name.toLowerCase() === name.toLowerCase()
+    && ((clientId && p.clientId === clientId) || (cleanUid && p.uid === cleanUid) || !p.connected));
   if (old) {
+    old.clientId = clientId || old.clientId;
     const oldConn = H.conns.get(old.id);
     H.conns.delete(old.id);
     if (oldConn && oldConn !== conn) oldConn.close();
     old.id = conn.peer;
     old.connected = true;
+    old.away = false;
+    H.seen.set(conn.peer, Date.now());
     old.uid = cleanUid || old.uid;
     old.photo = cleanPhoto(photo) || old.photo;
     H.conns.set(conn.peer, conn);
@@ -488,7 +517,10 @@ function hostJoin(conn, rawName, uid, photo) {
 
   let finalName = name;
   for (let n = 2; room.players.some((p) => p.name.toLowerCase() === finalName.toLowerCase()); n++) finalName = `${name} ${n}`;
-  room.players.push(newPlayer(conn.peer, finalName, false, freeColor(), cleanUid, cleanPhoto(photo)));
+  const seat = newPlayer(conn.peer, finalName, false, freeColor(), cleanUid, cleanPhoto(photo));
+  seat.clientId = clientId;
+  room.players.push(seat);
+  H.seen.set(conn.peer, Date.now());
   H.conns.set(conn.peer, conn);
   send(conn, { t: 'welcome', id: conn.peer, code: room.code });
   hostBroadcast();
@@ -532,7 +564,7 @@ function hostStartRound() {
   room.status = 'playing';
   room.startAt = Date.now() + COUNTDOWN_MS;
   room.deadline = room.settings.timer ? room.startAt + room.settings.timer * 1000 : 0;
-  if (room.deadline) H.deadline = setTimeout(hostReveal, room.deadline - Date.now() + 400);
+  if (room.deadline) H.deadline = setTimeout(hostReveal, room.deadline - Date.now() + 900);
   hostBroadcast();
 }
 
@@ -551,7 +583,7 @@ function hostGuess(pid, index, guess) {
 function hostCheckRound() {
   const room = H.room;
   if (room.status !== 'playing') return;
-  const waiting = room.players.filter((p) => p.connected && p.guesses[room.index] === undefined);
+  const waiting = room.players.filter((p) => p.connected && !p.away && p.guesses[room.index] === undefined);
   if (!waiting.length) hostReveal();
 }
 
@@ -664,6 +696,7 @@ function publicView() {
     const points = Array.from({ length: shown }, (_, i) => p.points[i] ?? 0);
     return {
       id: p.id, name: p.name, color: p.color, isHost: p.isHost, photo: p.photo, connected: p.connected,
+      away: p.away,
       locked: p.guesses[room.index] !== undefined,
       guess: room.status === 'reveal' || room.status === 'over' ? p.guesses[room.index] ?? null : undefined,
       points,
@@ -682,6 +715,25 @@ function publicView() {
   };
 }
 
+// Every couple of seconds: ping everyone, and mark players we haven't heard from as away.
+// Away players don't hold up a round, but keep their seat and can still answer.
+function hostHeartbeat() {
+  const room = H.room;
+  if (!room || !S.isHost) return;
+  for (const conn of H.conns.values()) send(conn, { t: 'hb' });
+  const now = Date.now();
+  let changed = false;
+  for (const p of room.players) {
+    if (p.isHost || !p.connected) continue;
+    const away = now - (H.seen.get(p.id) || 0) > AWAY_MS;
+    if (away !== p.away) { p.away = away; changed = true; }
+  }
+  if (changed) {
+    hostCheckRound();
+    hostBroadcast();
+  }
+}
+
 function hostBroadcast() {
   const view = publicView();
   for (const conn of H.conns.values()) send(conn, view);
@@ -691,7 +743,7 @@ function hostBroadcast() {
 /* =========================================================
    Rooms: joining
    ========================================================= */
-function joinRoom(code) {
+function joinRoom(code, { quiet = false } = {}) {
   const peer = new Peer(PEER_OPTIONS);
   let connected = false;
   let failed = false;
@@ -699,27 +751,37 @@ function joinRoom(code) {
     if (failed || connected) return;
     failed = true;
     clearTimeout(timer);
+    peer.destroy();
+    if (quiet) {
+      // Reconnecting after a drop didn't work: the host has gone
+      S.reconnecting = false;
+      closeRoom();
+      goHome();
+      showNotice('The room closed', 'The host left or lost their connection. Ask them to host a new room.');
+      return;
+    }
     setBusy(false);
     homeError(text);
-    peer.destroy();
   };
   const timer = setTimeout(() => fail('Could not reach that room. Check the code, or ask the host to keep their tab open.'), 15000);
   peer.on('open', (id) => {
-    Object.assign(S, { peer, myId: id, isHost: false, leaving: false, roundKey: '', revealKey: '', savedGame: '' });
+    Object.assign(S, { peer, myId: id, isHost: false, leaving: false });
+    // A fresh join starts clean; a reconnect keeps the round where it was (no second look at the dots)
+    if (!quiet) Object.assign(S, { roundKey: '', revealKey: '', savedGame: '', pending: null });
     const conn = peer.connect(PREFIX + code, { reliable: true });
     conn.on('open', () => {
       connected = true;
       clearTimeout(timer);
       S.hostConn = conn;
+      S.code = code;
+      S.heard = Date.now();
       const u = cloud.getUser();
-      send(conn, { t: 'join', name: S.myName, uid: u?.uid || null, photo: u?.photo || '' });
+      send(conn, { t: 'join', name: S.myName, uid: u?.uid || null, photo: u?.photo || '', client: CLIENT_ID });
     });
-    conn.on('data', onMessage);
+    conn.on('data', (msg) => { S.heard = Date.now(); onMessage(msg); });
     conn.on('close', () => {
-      if (S.leaving || !connected) return;
-      closeRoom();
-      goHome();
-      showNotice('The room closed', 'The host left or lost their connection. Ask them to host a new room.');
+      if (S.leaving || !connected || S.hostConn !== conn) return;
+      reconnect();
     });
   });
   peer.on('error', (err) => {
@@ -728,6 +790,41 @@ function joinRoom(code) {
     else console.warn('PeerJS error', err);
   });
 }
+
+// Lost the host (Wi-Fi blip, laptop asleep): rejoin quietly with the same name and tab id,
+// which gets the same seat back. If the host has really gone, joinRoom shows a notice.
+function reconnect() {
+  if (S.isHost || !S.code || S.reconnecting) return;
+  S.reconnecting = true;
+  toast('Connection lost. Reconnecting…');
+  const code = S.code;
+  S.leaving = true;
+  S.hostConn = null;
+  S.peer?.destroy();
+  S.leaving = false;
+  joinRoom(code, { quiet: true });
+}
+
+setInterval(() => {
+  if (S.isHost) { hostHeartbeat(); return; }
+  if (!S.hostConn || S.reconnecting) return;
+  send(S.hostConn, { t: 'ping' });
+  // A lock-in the host hasn't confirmed yet (lost in a blip) is sent again
+  const v = S.view, mine = v && me(v);
+  if (S.pending && S.locked && v && v.status === 'playing' && mine && !mine.locked && S.pending.key === `${v.gameSeed}:${v.index}`) {
+    send(S.hostConn, { t: 'guess', index: S.pending.index, guess: S.pending.guess });
+  }
+  if (!document.hidden && Date.now() - S.heard > LOST_MS) reconnect();
+}, PING_MS);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !S.isHost && S.hostConn && !S.reconnecting && Date.now() - S.heard > LOST_MS) reconnect();
+});
+// Closing the tab leaves the room straight away, instead of the host noticing much later
+window.addEventListener('pagehide', () => {
+  if (!S.peer) return;
+  S.leaving = true;
+  S.peer.destroy();
+});
 
 function peerErrorText(err) {
   if (err.type === 'browser-incompatible') return 'This browser can’t do live connections. Try Chrome, Firefox, Edge or Safari.';
@@ -741,6 +838,7 @@ function send(conn, msg) {
 }
 
 function sendGuess(index, guess) {
+  S.pending = { key: S.roundKey, index, guess };
   if (S.isHost) hostGuess(S.myId, index, guess);
   else send(S.hostConn, { t: 'guess', index, guess });
 }
@@ -752,7 +850,8 @@ function closeRoom() {
   stopLive();
   stopClock();
   S.peer.destroy();
-  Object.assign(S, { peer: null, hostConn: null, view: null, isHost: false, code: '', roundKey: '', revealKey: '' });
+  Object.assign(S, { peer: null, hostConn: null, view: null, isHost: false, code: '', roundKey: '', revealKey: '', reconnecting: false, pending: null });
+  H.seen.clear();
   H.room = null;
   H.conns.clear();
 }
@@ -765,7 +864,9 @@ function onMessage(msg) {
   if (msg.t === 'welcome') {
     S.myId = msg.id;
     S.code = msg.code;
-    if (!S.isHost) cloud.track('room_joined');
+    if (S.reconnecting) toast('Reconnected');
+    else if (!S.isHost) cloud.track('room_joined');
+    S.reconnecting = false;
     setBusy(false);
   } else if (msg.t === 'reject') {
     closeRoom();
@@ -822,8 +923,8 @@ function settingsLines(st) {
 function renderLobby(v) {
   $('lobby-code').textContent = v.code;
   const rows = v.players.map((p) => `
-    <li class="pc${p.color}${p.connected ? '' : ' offline'}"><span class="swatch"></span>${esc(p.name)}${p.id === S.myId ? ' (you)' : ''}
-      <span class="tag">${p.isHost ? 'Host' : p.connected ? '' : 'Reconnecting'}</span></li>`);
+    <li class="pc${p.color}${p.connected && !p.away ? '' : ' offline'}"><span class="swatch"></span>${esc(p.name)}${p.id === S.myId ? ' (you)' : ''}
+      <span class="tag">${p.isHost ? 'Host' : !p.connected || p.away ? 'Reconnecting' : ''}</span></li>`);
   for (let i = v.players.length; i < Math.max(2, v.players.length + 1) && i < MAX_PLAYERS; i++) rows.push('<li class="empty">Waiting for a friend to join…</li>');
   $('lobby-players').innerHTML = rows.join('');
   $('host-settings').hidden = !S.isHost;
@@ -855,14 +956,14 @@ function renderScoreboard(v) {
   const sorted = [...v.players].sort((a, b) => b.total - a.total);
   $('score-list').innerHTML = sorted.map((p) => {
     let st = '';
-    if (v.status === 'playing') st = p.locked ? '<small class="done">Locked in</small>' : p.connected ? '<small>Thinking…</small>' : '<small>Offline</small>';
-    return `<li class="pc${p.color}${p.connected ? '' : ' offline'}${v.status === 'playing' && p.locked ? ' done-now' : ''}">
+    if (v.status === 'playing') st = p.locked ? '<small class="done">Locked in</small>' : !p.connected ? '<small>Offline</small>' : p.away ? '<small>Away</small>' : '<small>Thinking…</small>';
+    return `<li class="pc${p.color}${p.connected && !p.away ? '' : ' offline'}${v.status === 'playing' && p.locked ? ' done-now' : ''}">
       <span class="swatch"></span><span class="nm">${esc(p.name)}${p.id === S.myId ? ' (you)' : ''}${st}</span><span class="pts">${p.total}</span></li>`;
   }).join('');
 }
 
 function waitingLine(v) {
-  const left = v.players.filter((p) => p.connected && !p.locked && p.id !== S.myId).map((p) => p.name);
+  const left = v.players.filter((p) => p.connected && !p.away && !p.locked && p.id !== S.myId).map((p) => p.name);
   if (!left.length) return 'Locked in.';
   const names = left.length > 3 ? `${left.slice(0, 3).join(', ')} and ${left.length - 3} more` : left.join(left.length === 2 ? ' and ' : ', ');
   return `Locked in. Waiting for ${names}…`;
@@ -884,7 +985,8 @@ function renderRoomRound(v) {
     S.locked = mine.locked;
     stopLive();
     frame({ mode: v.code, index: v.index, total: v.total, pz, ref: `Room ${v.code}`, points: mine.points });
-    if (v.endsIn > 0) runClock(performance.now() + v.endsIn, v.settings.timer * 1000);
+    // When time is nearly up, a guess that's been placed but not locked in still counts
+    if (v.endsIn > 0) runClock(performance.now() + v.endsIn, v.settings.timer * 1000, () => { if (live && !$('lock-btn').disabled) live.lock(); });
     else stopClock();
     if (S.locked) {
       $('play-hint').textContent = 'You already locked in this round.';
@@ -897,6 +999,10 @@ function renderRoomRound(v) {
       if (v.startsIn > 150) countdown(v.startsIn, start);
       else start();
     }
+  }
+  // A lock-in that got lost in a dropped connection is sent again
+  if (S.locked && !mine.locked && S.pending && S.pending.key === key && !S.isHost) {
+    send(S.hostConn, { t: 'guess', index: S.pending.index, guess: S.pending.guess });
   }
   $('waiting').textContent = S.locked ? waitingLine(v) : '';
   $('end-round-btn').hidden = !S.isHost;
@@ -1070,6 +1176,9 @@ kindPicks($('practice-kinds'), () => PREFS.kinds, (k) => { PREFS.kinds = k; save
 
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' || $('play').hidden || openSheet || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+  // One Enter does one thing: stop it also "clicking" the button that gets focus next
+  // (locking in moves focus to Next, which would otherwise skip the result)
+  e.preventDefault();
   if (!$('go-btn').hidden) $('go-btn').click();
   else if (live && !$('lock-btn').disabled) live.lock();
   else if (!$('result').hidden && !$('next-btn').hidden) $('next-btn').click();
@@ -1130,6 +1239,9 @@ $('analytics-toggle').addEventListener('change', (e) => {
   savePrefs();
   cloud.setAnalyticsEnabled(e.target.checked);
 });
+
+// Test hook: with ?debug in the address, automated tests can inspect the connection state.
+if (new URLSearchParams(location.search).has('debug')) window.__guesstimate = { S, H };
 
 /* =========================================================
    Start

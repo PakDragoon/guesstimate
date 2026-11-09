@@ -17,7 +17,7 @@ During a round the board is plain paper. The reveal turns it into a measured dra
 
 | | Easy | Normal | Hard |
 | --- | --- | --- | --- |
-| Count | 8 to 30 dots, 2.5 s | 20 to 80 dots, 1.6 s | 50 to 160 smaller dots, 1.1 s |
+| Count | 8 to 30 dots, 2.5 s | 20 to 80 smaller dots, 1.6 s | 50 to 160 small dots, 1.1 s |
 | Track | Slow, gentle angle, more of the flight visible | About 2 bounces | Fast, steep, about 4 bounces, little visible |
 | Angle | Multiples of 15°, grey arm flat | Any angle, tilted | Any angle, tilted, short grey arm |
 | Split | Halves, thirds, quarters, fifths | Percentages | Percentages or fractions like 5/7, on a tilted bar |
@@ -33,7 +33,16 @@ During a round the board is plain paper. The reveal turns it into a measured dra
 5. Each round starts with a 3-second countdown for everyone. Players lock in a guess; the scoreboard shows who has locked in, but nobody sees a guess until the reveal. The round ends when everyone has answered or the time runs out (the host can also click **End round now**).
 6. The host clicks **Next round** after each reveal. At the end everyone sees the standings; the host can **Rematch** or **Change settings**.
 
-Someone whose page refreshes rejoins with the same code and name and keeps their points. Someone new can join mid-game and plays from the current round.
+Someone new can join mid-game and plays from the current round.
+
+**When connections misbehave** (office Wi-Fi, laptops going to sleep):
+
+- **Refresh or close and reopen:** rejoin with the same code and name and you get your seat and points back. A guess you had already locked in still counts.
+- **Two people with the same name:** the second becomes "Sara 2". A seat is only taken over by the same browser tab (after a refresh), the same Google account, or once the original seat has gone offline, so nobody can take your seat by typing your name.
+- **Closing the tab** leaves the room straight away.
+- **Away:** players ping the host every 2 seconds. Someone silent for 9 seconds is shown as Away and the round stops waiting for them; they keep their seat and come back as soon as their connection does.
+- **Dropped connection:** a player who stops hearing from the host reconnects by themselves to the same seat and round. A lock-in lost in the drop is sent again. Only if the host has really gone do they see "The room closed".
+- **Time running out:** a guess you've placed but not locked in is locked in for you just before the time limit.
 
 **Daily puzzle.** Four puzzles (one of each test, normal), the same for everyone, new at midnight. One go per day; **Share result** copies a spoiler-free summary for your chat:
 
@@ -103,6 +112,8 @@ Built into `js/cloud.js` like the other games, and off until a `measurementId` i
 - Engine: `node test/rounds.test.mjs` (or `npm test`). It checks that puzzles are deterministic, stay inside the box and that dots never overlap; simulates the Track ball step by step against the formula; checks scoring (exact is 100, closer is never worse, either side counts on Angle); rejects bad guesses from the network; and checks the daily seed and day numbers.
 - Locally: `python3 -m http.server 8000`, then open `http://localhost:8000` in several windows with different names. Sign-in on localhost needs `http://localhost:8000/*` on the API key and `localhost` in authorized domains.
 - Real check after each deploy: one short room on two phones.
+
+Browser tests (multi-player, via Playwright) covered: joining (bad code, missing room, invite link, same names, full room of 8), lobby settings sync, full games on every difficulty with puzzles, scores and standings identical in every browser, rematch and change settings, the timer with automatic lock-in, End round now, ties, a player leaving mid-round and returning, refresh after locking in and during the reveal, a latecomer, a silent (Away) player, a lost lock-in, a dropped connection reconnecting, the host leaving, forged guesses (ignored), HTML in names (not rendered), keyboard-only play, the daily puzzle, storage blocked (private windows) and phones down to 360px. Open the game with `?debug` to expose its state as `window.__guesstimate` for such tests.
 
 ## Known limitations
 

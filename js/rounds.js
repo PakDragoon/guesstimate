@@ -43,9 +43,9 @@ const gcd = (a, b) => (b ? gcd(b, a % b) : a);
 // ---------- Count: how many dots? ----------
 
 const COUNT = {
-  easy: { min: 8, max: 30, showMs: 2500, r: [8, 8] },
-  normal: { min: 20, max: 80, showMs: 1600, r: [6.5, 6.5] },
-  hard: { min: 50, max: 160, showMs: 1100, r: [5, 5] },
+  easy: { min: 8, max: 30, showMs: 2500, r: [6.5, 6.5] },
+  normal: { min: 20, max: 80, showMs: 1600, r: [5, 5] },
+  hard: { min: 50, max: 160, showMs: 1100, r: [4, 4] },
 };
 
 function makeCount(r, difficulty) {
