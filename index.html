@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Count the dots, track the ball, eyeball the angle, split the line. Closest guess wins.">
+  <title>Guesstimate</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+<!-- ============ Home ============ -->
+<main id="home" class="screen home">
+  <div class="home-inner">
+    <h1 class="logo" aria-label="Guesstimate">
+      <svg class="gauge" viewBox="0 0 120 70" aria-hidden="true">
+        <path class="g-track" d="M10 62 A50 50 0 0 1 110 62"/>
+        <path class="g-poor" d="M10 62 A50 50 0 0 1 25 26.6"/>
+        <path class="g-okay" d="M25 26.6 A50 50 0 0 1 60 12"/>
+        <path class="g-good" d="M60 12 A50 50 0 0 1 110 62"/>
+        <line class="g-needle" x1="60" y1="62" x2="60" y2="20"/>
+        <circle class="g-hub" cx="60" cy="62" r="6"/>
+      </svg>
+      <span class="logo-sub" aria-hidden="true">Guesstimate</span>
+    </h1>
+    <p class="lede">No rulers, no counting on your fingers. Count the dots, track the ball, eyeball the angle, split the line. Closest guess wins.</p>
+
+    <div class="choices">
+      <section class="choice practice">
+        <h2>Practice</h2>
+        <div class="seg" id="difficulty" role="group" aria-label="Difficulty">
+          <button type="button" data-value="easy">Easy</button>
+          <button type="button" data-value="normal">Normal</button>
+          <button type="button" data-value="hard">Hard</button>
+        </div>
+        <fieldset class="kinds" id="kinds"><legend class="sr-only">Tests</legend></fieldset>
+        <label class="select-field">Rounds of each test
+          <select id="laps">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+        <button class="btn primary" id="start-btn" type="button">Start practice</button>
+        <p class="small-note muted" id="best-line"></p>
+      </section>
+      <section class="choice soon">
+        <h2>Play with friends</h2>
+        <p>Rooms for the whole office: everyone gets the same puzzle at the same moment, then the reveal shows whose guess was closest.</p>
+        <p class="tag-soon">Coming in the next update</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- ============ Play ============ -->
+<main id="play" class="screen play" hidden>
+  <div class="game-bar">
+    <span id="play-round" class="muted"></span>
+    <b id="play-kind"></b>
+    <button class="icon-btn" id="quit-btn" type="button" aria-label="Quit to home">✕</button>
+  </div>
+  <div class="progress" id="progress" aria-hidden="true"><i></i></div>
+  <div class="play-inner">
+    <h2 class="ask" id="play-ask"></h2>
+    <div class="stage" id="stage"></div>
+    <p class="hint muted" id="play-hint" aria-live="polite"></p>
+    <div class="actions">
+      <button class="btn primary wide" id="go-btn" type="button">Go</button>
+      <button class="btn primary wide" id="lock-btn" type="button" hidden>Lock in</button>
+    </div>
+    <section class="result" id="result" hidden aria-live="polite">
+      <div class="result-head">
+        <span class="result-score" id="result-score"></span>
+        <span class="result-verdict" id="result-verdict"></span>
+      </div>
+      <ul class="facts" id="result-facts"></ul>
+      <p class="legend muted" id="result-legend"><i class="key true"></i> Answer <i class="key you"></i> You</p>
+      <button class="btn primary wide" id="next-btn" type="button">Next round</button>
+    </section>
+  </div>
+</main>
+
+<!-- ============ Summary ============ -->
+<main id="summary" class="screen summary" hidden>
+  <div class="summary-inner">
+    <p class="muted">Average score</p>
+    <div class="sum-score" id="sum-score"></div>
+    <p class="sum-verdict" id="sum-verdict"></p>
+    <p class="muted" id="sum-note"></p>
+    <ol class="sum-rounds" id="sum-rounds"></ol>
+    <button class="btn primary wide" id="again-btn" type="button">Play again</button>
+    <button class="btn ghost wide" id="home-btn" type="button">Home</button>
+  </div>
+</main>
+
+</body>
+</html>
