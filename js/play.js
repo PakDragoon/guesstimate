@@ -135,7 +135,7 @@ const tag = (e) => (e.me ? 'You' : e.name);
 const guessedOnly = (entries) => entries.filter((e) => e.guess !== null && e.guess !== undefined);
 
 // A player's guess, in their colour.
-function pin(parent, x, y, color, r = 6.5) {
+function pin(parent, x, y, color, r = 5) {
   const g = el('g', { class: `pin pc${color}` }, parent);
   el('circle', { cx: x, cy: y, r: r + 2.5, class: 'pin-halo' }, g);
   el('circle', { cx: x, cy: y, r, class: 'pin-dot' }, g);
@@ -145,9 +145,9 @@ function pin(parent, x, y, color, r = 6.5) {
 // The real answer: a green ring with crosshairs.
 function answerMark(parent, x, y) {
   const g = el('g', { class: 'answer' }, parent);
-  el('circle', { cx: x, cy: y, r: 11, class: 'answer-ring' }, g);
-  el('path', { d: `M${x - 17} ${y}h9M${x + 8} ${y}h9M${x} ${y - 17}v9M${x} ${y + 8}v9`, class: 'answer-cross' }, g);
-  el('circle', { cx: x, cy: y, r: 3.2, class: 'answer-dot' }, g);
+  el('circle', { cx: x, cy: y, r: 9, class: 'answer-ring' }, g);
+  el('path', { d: `M${x - 15} ${y}h7M${x + 8} ${y}h7M${x} ${y - 15}v7M${x} ${y + 8}v7`, class: 'answer-cross' }, g);
+  el('circle', { cx: x, cy: y, r: 2.4, class: 'answer-dot' }, g);
   return g;
 }
 
@@ -241,7 +241,7 @@ export const TESTS = {
       el('line', { x1: pz.visibleX, y1: 0, x2: pz.visibleX, y2: b.h, class: 'fog-line' }, b.inside);
       rail(b);
       // Launcher on the left wall
-      el('path', { d: `M0 ${pz.y0 - 13}h7v26h-7`, class: 'launcher' }, b.inside);
+      el('path', { d: `M0 ${pz.y0 - 11}h5v22h-5`, class: 'launcher' }, b.inside);
       const trail = [0.28, 0.16, 0.08].map((o) => el('circle', { r: pz.ballR, cx: pz.x0, cy: pz.y0, class: 'trail', opacity: o }, b.inside));
       const ball = el('circle', { cx: pz.x0, cy: pz.y0, r: pz.ballR, class: 'dot' }, b.inside);
       const mark = reticle(b.over, color);
@@ -305,13 +305,11 @@ export const TESTS = {
 
   angle: {
     name: 'Angle',
-    how: 'Drag the coloured arm until the angle between it and the dark arm matches the target. Either side works.',
+    how: 'Drag the coloured arm until the angle between it and the grey arm matches the target. Either side works.',
     ask: (pz) => `Make a ${pz.target}° angle`,
     mount(stage, pz, { ready, color }) {
       const b = board(stage);
       const len = ANGLE_LEN[pz.difficulty];
-      dial(b.inside, pz.pivot, len);
-      const wedge = el('path', { class: `wedge pc${color}` }, b.inside);
       const sweep = el('path', { class: `sweep pc${color}` }, b.inside);
       arm(b.inside, pz.pivot, pz.baseline, baseLen(pz), 'base');
       let a = pz.start;
@@ -320,8 +318,7 @@ export const TESTS = {
       const draw = () => {
         const signed = a > 180 ? a - 360 : a;
         mine.turn(pz.baseline + a);
-        wedge.setAttribute('d', sector(pz.pivot, pz.baseline, signed, len - 8));
-        sweep.setAttribute('d', arcPath(pz.pivot, pz.baseline, signed, 34));
+        sweep.setAttribute('d', arcPath(pz.pivot, pz.baseline, signed, 30));
       };
       draw();
       b.svg.classList.add('aim');
@@ -338,13 +335,12 @@ export const TESTS = {
       const b = board(stage);
       grid(b);
       const len = ANGLE_LEN[pz.difficulty];
-      dial(b.inside, pz.pivot, len);
       const guessed = guessedOnly(entries);
       // Show the answer on each side somebody used
       const sides = [...new Set(guessed.map((e) => (e.guess < 0 ? -1 : 1)))];
       if (!sides.length) sides.push(1);
       if (entries.length === 1 && guessed.length) {
-        el('path', { d: sector(pz.pivot, pz.baseline, guessed[0].guess, len - 8), class: `wedge pc${guessed[0].color}` }, b.inside);
+        el('path', { d: arcPath(pz.pivot, pz.baseline, guessed[0].guess, 30), class: `sweep pc${guessed[0].color}` }, b.inside);
       }
       for (const side of sides) protractor(b.inside, pz, side);
       arm(b.inside, pz.pivot, pz.baseline, baseLen(pz), 'base');
@@ -367,18 +363,16 @@ export const TESTS = {
     mount(stage, pz, { ready, color }) {
       const b = board(stage);
       const s = slider(b.inside, pz);
-      const fill = el('rect', { x: 0, y: -6, height: 12, rx: 6, width: 0, class: `slide-fill pc${color}` }, s.g);
+      const fill = el('line', { x1: 0, y1: 0, x2: 0, y2: 0, class: `slide-fill pc${color}` }, s.g);
       s.caps();
       const thumb = el('g', { class: `thumb pc${color}`, visibility: 'hidden' }, s.g);
-      el('circle', { r: 15, class: 'thumb-halo' }, thumb);
-      el('circle', { cx: 1, cy: 3, r: 11, class: 'shadow' }, thumb);
-      el('circle', { r: 10.5, class: 'thumb-ring' }, thumb);
-      el('line', { x1: 0, y1: -4.5, x2: 0, y2: 4.5, class: 'thumb-grip' }, thumb);
+      el('line', { x1: 0, y1: -13, x2: 0, y2: 13, class: 'thumb-line' }, thumb);
+      el('circle', { cx: 0, cy: -13, r: 4, class: 'thumb-knob' }, thumb);
       let t = null;
       const ux = pz.b.x - pz.a.x, uy = pz.b.y - pz.a.y, uu = ux * ux + uy * uy;
       const place = (v) => {
         t = Math.min(1, Math.max(0, v));
-        fill.setAttribute('width', Math.max(0, t * s.len));
+        fill.setAttribute('x2', t * s.len);
         thumb.setAttribute('transform', `translate(${t * s.len} 0)`);
         thumb.setAttribute('visibility', 'visible');
         ready(true);
@@ -393,7 +387,7 @@ export const TESTS = {
       const s = slider(b.inside, pz);
       const guessed = guessedOnly(entries);
       if (entries.length === 1 && guessed.length) {
-        el('rect', { x: 0, y: -6, height: 12, rx: 6, width: guessed[0].guess * s.len, class: `slide-fill soft pc${guessed[0].color}` }, s.g);
+        el('line', { x1: 0, y1: 0, x2: guessed[0].guess * s.len, y2: 0, class: `slide-fill soft pc${guessed[0].color}` }, s.g);
       }
       s.caps();
       // Ruler scale above the bar, in the bar's own frame
@@ -418,7 +412,7 @@ export const TESTS = {
         const [gx, gy] = at(e.guess);
         const [lx, ly] = at(lt[i]);
         el('path', { d: `M${gx - nx * 12} ${gy - ny * 12}L${lx - nx * 30} ${ly - ny * 30}`, class: `leader pc${e.color}` }, b.over);
-        pin(b.over, gx, gy, e.color, 6);
+        pin(b.over, gx, gy, e.color, 4.5);
         label(b.over, lx - nx * 41, ly - ny * 41 + 4, `${tag(e)} ${pct(e.guess)}`, { color: e.color, cls: 'who' });
       });
     },
@@ -435,9 +429,9 @@ function rail(b) {
 
 function reticle(parent, color) {
   const g = el('g', { class: `reticle pc${color}` }, parent);
-  el('circle', { r: 9, class: 'ret-ring' }, g);
-  el('path', { d: 'M-30 0H-13M-4 0h4', class: 'ret-line' }, g);
-  el('circle', { r: 2, class: 'ret-dot' }, g);
+  el('circle', { r: 7, class: 'ret-ring' }, g);
+  el('path', { d: 'M-28 0H-11', class: 'ret-line' }, g);
+  el('circle', { r: 1.8, class: 'ret-dot' }, g);
   return g;
 }
 
@@ -446,51 +440,21 @@ function ray(parent, pivot, worldDeg, len, cls) {
   return el('line', { x1: pivot.x, y1: pivot.y, x2: x, y2: y, class: cls }, parent);
 }
 
-// The round plate the arms turn on. No ticks, so it can't be used to measure.
-function dial(parent, p, len) {
-  el('circle', { cx: p.x, cy: p.y, r: len + 14, class: 'plate' }, parent);
-  el('circle', { cx: p.x, cy: p.y, r: len + 9.5, class: 'bezel' }, parent);
-  el('circle', { cx: p.x, cy: p.y, r: len + 14, class: 'plate-rim' }, parent);
-  el('circle', { cx: p.x, cy: p.y, r: 46, class: 'plate-inner' }, parent);
-}
-
 const armAt = (p, worldDeg) => `translate(${p.x} ${p.y}) rotate(${-worldDeg})`;
 
-// An arm like a drafting-compass leg: a rounded strip with a groove, and a grip at the end.
+// An arm: one clean line from the pivot, with a small ring handle on the one you drag.
 function arm(parent, p, worldDeg, len, cls, grip = false) {
   const thin = cls.includes('thin');
-  const h = thin ? 7 : 13;
-  const g = el('g', { class: `arm ${cls}`, transform: armAt(p, worldDeg) }, parent);
-  const shade = el('g', { class: 'shadow' }, g);
-  el('rect', { x: -h / 2, y: -h / 2, width: len + h / 2, height: h, rx: h / 2 }, shade);
-  if (grip) el('circle', { cx: len, cy: 0, r: thin ? 5.5 : 12.5 }, shade);
-  el('rect', { x: -h / 2, y: -h / 2, width: len + h / 2, height: h, rx: h / 2, class: 'arm-body' }, g);
-  if (!thin) el('line', { x1: 16, y1: 0, x2: len - 12, y2: 0, class: 'arm-groove' }, g);
-  if (grip) {
-    el('circle', { cx: len, cy: 0, r: thin ? 5.5 : 12.5, class: 'arm-grip' }, g);
-    if (!thin) el('circle', { cx: len, cy: 0, r: 4, class: 'arm-grip-dot' }, g);
-  }
-  // Keep the shadow falling down-right on screen whichever way the arm points
-  g.turn = (deg) => {
-    g.setAttribute('transform', armAt(p, deg));
-    shade.setAttribute('transform', `rotate(${deg}) translate(2 3.5) rotate(${-deg})`);
-  };
+  const g = el('g', { class: `arm ${cls}` }, parent);
+  el('line', { x1: 0, y1: 0, x2: len, y2: 0, class: 'arm-line' }, g);
+  if (grip) el('circle', { cx: len, cy: 0, r: thin ? 3.2 : 7.5, class: thin ? 'arm-end' : 'arm-handle' }, g);
+  g.turn = (deg) => g.setAttribute('transform', armAt(p, deg));
   g.turn(worldDeg);
   return g;
 }
 
 function rivet(parent, p) {
-  el('circle', { cx: p.x + 1.5, cy: p.y + 2.5, r: 12, class: 'shadow' }, parent);
-  el('circle', { cx: p.x, cy: p.y, r: 12, class: 'rivet' }, parent);
-  el('circle', { cx: p.x, cy: p.y, r: 4.5, class: 'rivet-eye' }, parent);
-}
-
-// Filled pie slice from the dark arm, turning by deg (negative = clockwise on screen).
-function sector(p, base, deg, r) {
-  if (Math.abs(deg) < 0.5) return '';
-  const a = rad(base), b = rad(base + deg);
-  const sweep = deg > 0 ? 0 : 1, large = Math.abs(deg) > 180 ? 1 : 0;
-  return `M${p.x} ${p.y}L${p.x + Math.cos(a) * r} ${p.y - Math.sin(a) * r}A${r} ${r} 0 ${large} ${sweep} ${p.x + Math.cos(b) * r} ${p.y - Math.sin(b) * r}Z`;
+  el('circle', { cx: p.x, cy: p.y, r: 3.4, class: 'pivot-dot' }, parent);
 }
 
 function arcPath(p, base, deg, r) {
@@ -523,11 +487,11 @@ function slider(parent, pz) {
   const len = Math.hypot(pz.b.x - pz.a.x, pz.b.y - pz.a.y);
   const deg = (Math.atan2(pz.b.y - pz.a.y, pz.b.x - pz.a.x) * 180) / Math.PI;
   const g = el('g', { transform: `translate(${pz.a.x} ${pz.a.y}) rotate(${deg})` }, parent);
-  el('rect', { x: -6, y: -6, width: len + 6, height: 12, rx: 6, class: 'slide-track' }, g);
+  el('line', { x1: 0, y1: 0, x2: len, y2: 0, class: 'slide-line' }, g);
   const caps = () => {
-    el('circle', { cx: 0, cy: 0, r: 11, class: 'slide-start' }, g);
-    el('circle', { cx: 0, cy: 0, r: 4, class: 'slide-start-eye' }, g);
-    el('rect', { x: len - 3.5, y: -15, width: 7, height: 30, rx: 3.5, class: 'slide-end' }, g);
+    el('line', { x1: len, y1: -9, x2: len, y2: 9, class: 'slide-cap' }, g);
+    el('line', { x1: 0, y1: -9, x2: 0, y2: 9, class: 'slide-cap' }, g);
+    el('circle', { cx: 0, cy: 0, r: 4.5, class: 'slide-start' }, g);
   };
   return { g, len, caps };
 }

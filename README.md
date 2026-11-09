@@ -10,7 +10,7 @@ Play at `https://pakdragoon.github.io/guesstimate/`.
 | --- | --- |
 | **Count** | Dots flash for a moment. Guess how many there were. |
 | **Track** | A ball flies right, bouncing off the top and bottom, and vanishes into the hatched zone. Mark where it hits the right wall. |
-| **Angle** | Drag the coloured arm until the angle between it and the dark arm matches the target. Either side of the dark arm works. |
+| **Angle** | Drag the coloured arm until the angle between it and the grey arm matches the target. Either side of the grey arm works. |
 | **Split** | Slide the marker to the point that sits the given fraction (1/3, 37%, 5/7...) of the way along the bar, starting from the round end. |
 
 During a round the board is plain paper. The reveal turns it into a measured drawing: a grid fades in, the ball's flight draws itself, and rulers, a protractor and dimension lines show the real answer in green next to every player's guess in their own colour.
@@ -19,7 +19,7 @@ During a round the board is plain paper. The reveal turns it into a measured dra
 | --- | --- | --- | --- |
 | Count | 8 to 30 dots, 2.5 s | 20 to 80 dots, 1.6 s | 50 to 160 smaller dots, 1.1 s |
 | Track | Slow, gentle angle, more of the flight visible | About 2 bounces | Fast, steep, about 4 bounces, little visible |
-| Angle | Multiples of 15°, dark arm flat | Any angle, tilted | Any angle, tilted, short dark arm |
+| Angle | Multiples of 15°, grey arm flat | Any angle, tilted | Any angle, tilted, short grey arm |
 | Split | Halves, thirds, quarters, fifths | Percentages | Percentages or fractions like 5/7, on a tilted bar |
 
 ## Three ways to play
