@@ -205,12 +205,15 @@ export function error(pz, guess) {
   }
 }
 
-// The error that scores 50. Each halving of the error doubles the distance to 100.
+// The error that scores 50, per test.
 export const HALF = { count: Math.log(1.2), track: 0.08, angle: 6, split: 0.03 };
+// Curve shape: above 1 the top is flatter (tiny misses, like hand jitter, cost little) and
+// bigger misses fall away faster. Half the 50-point error scores 78, double scores 14.
+export const SHAPE = 1.5;
 
 export function score(pz, guess) {
   if (guess === null || guess === undefined || Number.isNaN(guess)) return 0;
-  return Math.round(100 * Math.pow(0.5, error(pz, guess) / HALF[pz.kind]));
+  return Math.round(100 * Math.pow(0.5, Math.pow(error(pz, guess) / HALF[pz.kind], SHAPE)));
 }
 
 export function verdict(points) {

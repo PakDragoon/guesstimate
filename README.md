@@ -56,7 +56,11 @@ Count 88 · Track 61 · Angle 93 · Split 54
 
 ## Scoring
 
-Every round is scored from 0 to 100. Every test has an error that scores 50; each time you halve your error, you halve your distance to 100.
+Every round is scored from 0 to 100: `100 × 0.5 ^ ((miss ÷ 50-point miss) ^ 1.5)`. Exact is 100 and the 50-point miss scores 50. The curve is flat near the answer, so tiny misses (hand jitter) cost little, and steep further out, so close and sloppy rounds are clearly apart:
+
+| Miss, as a share of the 50-point miss | ¼ | ½ | 1 | 1½ | 2 | 3 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Points | 92 | 78 | 50 | 28 | 14 | 3 |
 
 | Test | Scores 50 when you're off by |
 | --- | --- |

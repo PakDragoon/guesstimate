@@ -71,6 +71,11 @@ const sample = Object.fromEntries(R.KINDS.map((k) => [k, R.makeRound(k, 42, 'nor
 for (const kind of R.KINDS) assert.equal(R.score(sample[kind], sample[kind].answer), 100, kind);
 assert.equal(R.score(sample.angle, sample.angle.answer + R.HALF.angle), 50);
 assert.equal(R.score(sample.angle, sample.angle.answer + 360), 100, 'angles wrap');
+// The curve: flat near the answer, steep further out (Angle: 6° scores 50)
+const a = sample.angle.answer;
+assert.deepEqual([1, 2, 3, 6, 9, 12, 18].map((d) => R.score(sample.angle, a + d)), [95, 88, 78, 50, 28, 14, 3]);
+assert.equal(R.score(sample.split, sample.split.answer + R.HALF.split / 2), 78);
+assert.equal(R.score(sample.track, sample.track.answer + 2 * R.HALF.track * R.BOX.h), 14);
 assert.equal(R.score(sample.angle, -sample.angle.answer), 100, 'clockwise counts too');
 assert.equal(R.score(sample.angle, 360 - sample.angle.answer), 100, 'clockwise, written as a big turn');
 assert.equal(R.score(sample.split, sample.split.answer + R.HALF.split), 50);
