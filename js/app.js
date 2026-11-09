@@ -1,5 +1,5 @@
 import * as R from './rounds.js';
-import { TESTS, icon } from './play.js';
+import { TESTS, icon, blank } from './play.js';
 import * as cloud from './cloud.js';
 
 /* =========================================================
@@ -168,6 +168,7 @@ function frame({ mode, index, total, pz, ref, points }) {
   $('tb-sheet').textContent = `${index + 1} / ${total}`;
   $('tb-ref').textContent = ref;
   $('stage').replaceChildren();
+  blank($('stage'));
   $('controls').replaceChildren();
   $('result').hidden = true;
   $('waiting').textContent = '';

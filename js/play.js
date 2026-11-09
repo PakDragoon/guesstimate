@@ -496,6 +496,12 @@ function slider(parent, pz) {
   return { g, len, caps };
 }
 
+// An empty sheet, shown before a round starts so the board keeps its size (and the
+// countdown has somewhere to sit).
+export function blank(stage) {
+  board(stage);
+}
+
 // Small line-art icons for each test (logo tiles, pickers, tables).
 export function icon(kind) {
   const paths = {

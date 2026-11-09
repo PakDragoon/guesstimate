@@ -316,7 +316,9 @@ h1, h2, h3 { line-height: 1.15; margin: 0; }
 .title-block span:first-child { border-left: 0; }
 .title-block i { font-style: normal; color: var(--muted); font-size: 0.72rem; }
 .title-block b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-.countdown { position: absolute; inset: 0 0 2.6rem; display: grid; place-items: center; pointer-events: none; }
+.board-wrap { position: relative; }
+/* Centred on the drawing itself, not the whole sheet */
+.countdown { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .countdown span {
   display: grid; place-items: center; width: 7rem; height: 7rem; border-radius: 50%;
   font-size: 3.6rem; font-weight: 800; color: var(--ink);
