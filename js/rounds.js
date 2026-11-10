@@ -174,12 +174,21 @@ function makeSplit(r, difficulty) {
 
 // ---------- Timing: stop the hidden clock at the target ----------
 
-// Easy: whole seconds. Normal and hard: tenths, longer on hard (people drift more over time).
+// Targets in tenths of a second. Easy: whole seconds 1-6. Normal: 1.0-10.0. Hard: 1.0-20.0.
 const TIME = {
-  easy: { lo: 20, hi: 50, step: 10 },
-  normal: { lo: 20, hi: 60, step: 1 },
-  hard: { lo: 40, hi: 99, step: 1 },
+  easy: { lo: 10, hi: 60, step: 10 },
+  normal: { lo: 10, hi: 100, step: 1 },
+  hard: { lo: 10, hi: 200, step: 1 },
 };
+// The miss is measured against the target plus this much, so short targets aren't
+// judged harder than long ones (0.3 s off a 1 s target isn't a "30%" disaster).
+export const TIME_CUSHION = 2;
+
+// Seconds allowed to answer a round: Timing gets room to count past long targets
+export function answerSeconds(pz, timer) {
+  if (!timer) return 0;
+  return pz.kind === 'time' ? Math.max(timer, Math.ceil(pz.target * 1.5 + 8)) : timer;
+}
 
 function makeTime(r, difficulty) {
   const c = TIME[difficulty];
@@ -216,13 +225,13 @@ export function error(pz, guess) {
     case 'track': return Math.abs(guess - pz.answer) / BOX.h;
     case 'angle': return Math.abs(Math.abs(angleDiff(guess, 0)) - pz.answer);
     case 'split': return Math.abs(guess - pz.answer);
-    case 'time': return Math.abs(guess - pz.answer) / pz.answer;   // as a share of the target
+    case 'time': return Math.abs(guess - pz.answer) / (pz.answer + TIME_CUSHION);
     default: throw new Error(`Unknown test: ${pz.kind}`);
   }
 }
 
 // The error that scores 50, per test.
-export const HALF = { count: Math.log(1.2), track: 0.08, angle: 6, split: 0.03, time: 0.08 };
+export const HALF = { count: Math.log(1.2), track: 0.08, angle: 6, split: 0.03, time: 0.15 };
 // Curve shape: above 1 the top is flatter (tiny misses, like hand jitter, cost little) and
 // bigger misses fall away faster. Half the 50-point error scores 78, double scores 14.
 export const SHAPE = 1.5;

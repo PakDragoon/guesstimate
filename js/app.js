@@ -574,7 +574,9 @@ function hostStartRound() {
   clearTimeout(H.deadline);
   room.status = 'playing';
   room.startAt = Date.now() + COUNTDOWN_MS;
-  room.deadline = room.settings.timer ? room.startAt + room.settings.timer * 1000 : 0;
+  // Timing rounds get extra room so a long target can still be counted out
+  const limit = R.answerSeconds(hostRounds()[room.index], room.settings.timer);
+  room.deadline = limit ? room.startAt + limit * 1000 : 0;
   if (room.deadline) H.deadline = setTimeout(hostReveal, room.deadline - Date.now() + 900);
   hostBroadcast();
 }
@@ -997,7 +999,8 @@ function renderRoomRound(v) {
     stopLive();
     frame({ mode: v.code, index: v.index, total: v.total, pz, ref: `Room ${v.code}`, points: mine.points });
     // When time is nearly up, a guess that's been placed but not locked in still counts
-    if (v.endsIn > 0) runClock(performance.now() + v.endsIn, v.settings.timer * 1000, () => { if (live && !$('lock-btn').disabled) live.lock(); });
+    // No visible countdown in Timing rounds: ticking seconds would let anyone time it off the clock
+    if (v.endsIn > 0 && pz.kind !== 'time') runClock(performance.now() + v.endsIn, R.answerSeconds(pz, v.settings.timer) * 1000, () => { if (live && !$('lock-btn').disabled) live.lock(); });
     else stopClock();
     if (S.locked) {
       $('play-hint').textContent = 'You already locked in this round.';

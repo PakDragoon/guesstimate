@@ -22,7 +22,7 @@ During a round the board is plain paper. The reveal turns it into a measured dra
 | Track | Slow, gentle angle, more of the flight visible | About 2 bounces | Fast, steep, about 4 bounces, little visible |
 | Angle | Multiples of 15°, grey arm flat | Any angle, tilted | Any angle, tilted, short grey arm |
 | Split | Halves, thirds, quarters, fifths | Percentages | Percentages or fractions like 5/7, on a tilted bar |
-| Timing | Whole seconds, 2 to 5 s | Tenths, 2.0 to 6.0 s | Tenths, 4.0 to 9.9 s |
+| Timing | Whole seconds, 1 to 6 s | Tenths, 1.0 to 10.0 s | Tenths, 1.0 to 20.0 s |
 
 ## Three ways to play
 
@@ -36,6 +36,8 @@ During a round the board is plain paper. The reveal turns it into a measured dra
 6. The host clicks **Next round** after each reveal. At the end everyone sees the standings; the host can **Rematch** or **Change settings**.
 
 Someone new can join mid-game and plays from the current round.
+
+Timing rounds get extra time to answer when the room has a limit (the target × 1.5 + 8 s, if that's longer), and the countdown clock is hidden during them so nobody can time it off the screen.
 
 **When connections misbehave** (office Wi-Fi, laptops going to sleep):
 
@@ -70,7 +72,7 @@ Every round is scored from 0 to 100: `100 × 0.5 ^ ((miss ÷ 50-point miss) ^ 1.
 | Track | 8% of the wall's height |
 | Angle | 6° |
 | Split | 3% of the line |
-| Timing | 8% of the target time (0.24 s on a 3 s target) |
+| Timing | 15% of (target + 2 s): 1 s off scores 53 on a 5 s target, 69 on 8 s, 84 on 15 s |
 
 Verdicts: 95+ Spot on!, 80+ Sharp, 60+ Close, 35+ Ballpark, under 35 Way off. In a room, the highest total wins; a tie on total is broken by the best single round.
 

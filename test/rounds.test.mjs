@@ -15,7 +15,7 @@ for (const d of R.DIFFICULTIES) {
       checked++;
     }
     // Timing has a small set of targets by design: nearly all of them should come up
-    const want = kind === 'time' ? { easy: 4, normal: 37, hard: 54 }[d] : 201;   // nearly all of 4, 41 and 60 targets
+    const want = kind === 'time' ? { easy: 6, normal: 80, hard: 130 }[d] : 201;   // most of 6, 91 and 191 targets
     assert.ok(seen.size >= want, `${kind}/${d} repeats too often (${seen.size} unique of 300)`);
   }
 }
@@ -68,7 +68,7 @@ for (let i = 0; i < 3000; i++) {
 
   const tm = R.makeRound('time', seed, d);
   assert.equal(tm.answer, tm.target);
-  const [lo, hi] = { easy: [2, 5], normal: [2, 6], hard: [4, 9.9] }[d];
+  const [lo, hi] = { easy: [1, 6], normal: [1, 10], hard: [1, 20] }[d];
   assert.ok(tm.answer >= lo && tm.answer <= hi, `time ${tm.answer} out of range (${d})`);
   if (d === 'easy') assert.ok(Number.isInteger(tm.answer), 'easy timing is whole seconds');
   assert.equal(Math.round(tm.answer * 10) / 10, tm.answer, 'timing targets are tenths');
@@ -131,10 +131,18 @@ assert.equal(R.describe(g.split, 0.371), '37%');
 assert.equal(R.describe(g.count, null), '–');
 assert.equal(R.describe(g.time, 3.1234), '3.12 s');
 assert.equal(R.describe({ kind: 'time', answer: 3, target: 3 }), '3.0 s');
-// Timing is judged as a share of the target: 8% off scores 50, half that 78, double 14
-const t3 = { kind: 'time', answer: 3, target: 3 };
-assert.deepEqual([3, 3.05, 3.12, 2.76, 3.24, 3.48].map((x) => R.score(t3, x)), [100, 94, 78, 50, 50, 14]);
-assert.equal(R.score({ kind: 'time', answer: 8, target: 8 }, 8.64), 50, 'same share off scores the same on a longer target');
+// Timing: the miss is measured against the target + 2 s, and 15% of that scores 50
+const tm = (t) => ({ kind: 'time', answer: t, target: t });
+assert.deepEqual([3, 5, 8, 15, 20].map((t) => R.score(tm(t), t + 1)), [34, 53, 69, 84, 89], '1 s off');
+assert.deepEqual([1, 3, 8, 20].map((t) => R.score(tm(t), t + 0.1)), [93, 97, 99, 100], '0.1 s off');
+assert.equal(R.score(tm(8), 8), 100);
+assert.equal(R.score(tm(8), 6.5), R.score(tm(8), 9.5), 'early and late count the same');
+assert.equal(R.score(tm(8), 8 + 0.15 * 10), 50, 'a miss of 15% of (target + 2 s) scores 50');
+// Time to answer: Timing rounds get room for long targets, other rounds keep the room's limit
+assert.equal(R.answerSeconds(tm(20), 20), 38);
+assert.equal(R.answerSeconds(tm(3), 30), 30);
+assert.equal(R.answerSeconds({ kind: 'angle' }, 20), 20);
+assert.equal(R.answerSeconds(tm(20), 0), 0, 'no limit stays no limit');
 
 assert.equal(R.dayNumber('2026-11-10'), 1);
 assert.equal(R.dayNumber('2026-11-11'), 2);
