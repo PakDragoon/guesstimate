@@ -136,7 +136,7 @@ h1, h2, h3 { line-height: 1.15; margin: 0; }
 }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 
-.kind-picks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+.kind-picks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.35rem; }
 .kind-pick {
   display: grid; justify-items: center; gap: 0.25rem;
   font: 600 0.85rem var(--font); color: var(--muted);
@@ -146,7 +146,7 @@ h1, h2, h3 { line-height: 1.15; margin: 0; }
 .kind-pick .ico { width: 1.6rem; height: 1.6rem; }
 .kind-pick[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
 .kind-pick[aria-pressed="true"] .ico { color: var(--kc); }
-.k-count { --kc: var(--p0); } .k-track { --kc: var(--near); } .k-angle { --kc: var(--hit); } .k-split { --kc: var(--p1); }
+.k-count { --kc: var(--p0); } .k-track { --kc: var(--near); } .k-angle { --kc: var(--hit); } .k-split { --kc: var(--p1); } .k-time { --kc: var(--p2); }
 
 /* ---------- Account chip ---------- */
 .top-right { position: absolute; top: calc(0.9rem + env(safe-area-inset-top, 0px)); right: 1rem; display: flex; gap: 0.5rem; }
@@ -181,6 +181,7 @@ h1, h2, h3 { line-height: 1.15; margin: 0; }
 .tile:nth-child(2) { animation-delay: 0.07s; }
 .tile:nth-child(3) { animation-delay: 0.14s; }
 .tile:nth-child(4) { animation-delay: 0.21s; }
+.tile:nth-child(5) { animation-delay: 0.28s; }
 @keyframes tile-in { from { transform: translateY(-16px) scale(0.85); opacity: 0; } }
 .logo-word {
   font-size: clamp(2.7rem, 12vw, 4.1rem);
@@ -546,3 +547,18 @@ h1, h2, h3 { line-height: 1.15; margin: 0; }
 }
 .end-round { justify-self: center; }
 .board.locked { pointer-events: none; filter: saturate(0.6); opacity: 0.75; }
+
+/* Timing */
+.lbl.time-k { fill: var(--muted); font-size: 15px; font-weight: 600; stroke-width: 0; }
+.lbl.time-target { fill: var(--ink); font-size: 64px; font-weight: 800; letter-spacing: -2px; stroke-width: 0; }
+.lbl.time-status { fill: var(--muted); font-size: 14px; stroke-width: 0; }
+.board.timing .time-target { fill: var(--muted); }
+.lbl.answer-lbl.big { font-size: 20px; }
+.time-btn {
+  width: 100%; min-height: 4.2rem; font: 800 1.35rem var(--font); letter-spacing: 0.02em;
+  color: var(--bg); background: var(--ink); border: 0; border-radius: 14px; cursor: pointer;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.time-btn.running { background: var(--pc); color: #fff; }
+.time-btn:disabled { opacity: 0.55; cursor: default; }
+.kind-pick { font-size: 0.8rem; }

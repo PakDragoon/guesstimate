@@ -417,7 +417,99 @@ export const TESTS = {
       });
     },
   },
+
+  time: {
+    name: 'Timing',
+    how: 'Press Start, count in your head, and press Stop when you think the target time has passed. No clock is shown.',
+    ask: (pz) => `Stop the clock at exactly ${secs(pz.target)}`,
+    selfLock: true,   // pressing Stop locks the guess in; there's no separate Lock in
+    mount(stage, pz, { ready, submit, controls, color }) {
+      const b = board(stage);
+      label(b.inside, b.w / 2, 92, 'Stop at', { cls: 'time-k' });
+      label(b.inside, b.w / 2, 158, secs(pz.target), { cls: 'time-target' });
+      const status = label(b.inside, b.w / 2, 232, 'Press Start, then count in your head', { cls: 'time-status' });
+      // Nothing on screen moves while the clock runs: any animation would give the rhythm away
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `time-btn pc${color}`;
+      btn.textContent = 'Start';
+      (controls || stage).append(btn);
+      let started = null, done = false;
+      // Times come from the moment the browser registered the press (event.timeStamp),
+      // so a busy page can't add delay to anyone's guess.
+      const press = (ts) => {
+        if (done) return;
+        if (started === null) {
+          started = ts;
+          btn.textContent = 'Stop';
+          btn.classList.add('running');
+          b.svg.classList.add('timing');
+          status.textContent = 'Counting… press Stop when you think it’s time';
+          return;
+        }
+        if (ts - started < 120) return;   // ignore an accidental double tap
+        done = true;
+        guess = Math.round((ts - started) / 10) / 100;
+        btn.disabled = true;
+        btn.textContent = 'Stopped';
+        ready(true);
+        submit();
+      };
+      let guess = null;
+      const onBtn = (e) => { e.preventDefault(); press(e.timeStamp); };
+      const onBoard = (e) => { e.preventDefault(); press(e.timeStamp); };
+      const onKey = (e) => {
+        if (e.key !== ' ' || e.repeat || e.target.tagName === 'INPUT') return;
+        e.preventDefault();
+        press(e.timeStamp);
+      };
+      btn.addEventListener('pointerdown', onBtn);
+      btn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); press(e.timeStamp); } });
+      b.svg.addEventListener('pointerdown', onBoard);
+      document.addEventListener('keydown', onKey);
+      btn.focus({ preventScroll: true });
+      return {
+        guess: () => guess,
+        destroy() { document.removeEventListener('keydown', onKey); },
+      };
+    },
+    reveal(stage, pz, entries) {
+      const b = board(stage);
+      grid(b);
+      const guessed = guessedOnly(entries);
+      const top = Math.max(pz.answer, ...guessed.map((e) => e.guess)) * 1.15 + 0.3;
+      const step = niceStep(top);
+      const max = Math.ceil(top / step) * step;
+      const x = (v) => 30 + (v / max) * (b.w - 60);
+      const base = 178;
+      label(b.inside, b.w / 2, 52, `Target ${secs(pz.target)}`, { cls: 'answer-lbl big' });
+      const ruler = el('g', { class: 'ruler reveal-late' }, b.inside);
+      el('line', { x1: x(0), y1: base, x2: x(max), y2: base, class: 'rule' }, ruler);
+      for (let i = 0; i <= Math.round((max / step) * 2); i++) {
+        const v = (i * step) / 2;
+        el('line', { x1: x(v), y1: base, x2: x(v), y2: base - (i % 2 ? 4.5 : 8), class: 'tick' }, ruler);
+        if (i % 2 === 0 && Math.abs(x(v) - x(pz.answer)) > 18) label(ruler, x(v), base - 13, `${+v.toFixed(2)} s`, { cls: 'tick-lbl' });
+      }
+      const ax = x(pz.answer);
+      el('line', { x1: ax, y1: base - 2, x2: ax, y2: 96, class: 'ext answer-ext reveal-late' }, b.over);
+      el('path', { d: `M${ax} ${base}l-6 -11h12z`, class: 'answer-tri' }, b.over);
+      if (entries.length === 1 && guessed.length) {
+        // Just you: a dimension line between your stop and the target, early or late
+        const g = guessed[0].guess, d = g - pz.answer;
+        if (Math.abs(x(g) - ax) > 14) dimension(b.over, ax, 120, x(g), 120, `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(2)} s ${d > 0 ? 'late' : 'early'}`);
+      }
+      const lx = spread(guessed.map((e) => x(e.guess)), 40, b.w - 40, 66);
+      guessed.forEach((e, i) => {
+        const gx = x(e.guess);
+        el('path', { d: `M${gx} ${base + 5}V${base + 26}L${lx[i]} ${base + 40}`, class: `leader pc${e.color}` }, b.inside);
+        pin(b.inside, gx, base, e.color, 5);
+        label(b.inside, lx[i], base + 55, `${tag(e)} ${e.guess.toFixed(2)} s`, { color: e.color, cls: 'who' });
+      });
+    },
+  },
 };
+
+const secs = (t) => (Number.isInteger(t) ? `${t} s` : `${t.toFixed(1)} s`);
 
 // ---------- Pieces ----------
 
@@ -509,6 +601,7 @@ export function icon(kind) {
     track: '<path d="M3 15 L10 21 L21 5" fill="none" stroke-dasharray="2.5 2.5"/><circle cx="21" cy="5" r="2.8"/>',
     angle: '<path d="M4 19H21M4 19L16 5" fill="none"/><path d="M11 19a7 7 0 0 0 -2.4 -5.3" fill="none"/>',
     split: '<path d="M3 13H21" fill="none"/><circle cx="3.5" cy="13" r="2.2"/><path d="M13 5v4.5M10.5 6.5L13 9.5L15.5 6.5" fill="none"/>',
+    time: '<circle cx="12" cy="13.5" r="7.5" fill="none"/><path d="M12 13.5V9.5M9.5 3h5M12 3v3M18.3 7.2l1.4-1.4" fill="none"/>',
   };
   return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${paths[kind]}</svg>`;
 }

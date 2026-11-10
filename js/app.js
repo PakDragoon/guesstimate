@@ -52,6 +52,14 @@ const CLIENT_ID = (() => {
   } catch { return fresh(); }
 })();
 const saveRoomPrefs = () => store.set('room', ROOM_PREFS);
+// Settings saved before Timing existed: switch the new test on once
+for (const [prefs, save] of [[PREFS, savePrefs], [ROOM_PREFS, saveRoomPrefs]]) {
+  if ((prefs.version || 1) < 2) {
+    if (!prefs.kinds.includes('time')) prefs.kinds = R.KINDS.filter((k) => prefs.kinds.includes(k) || k === 'time');
+    prefs.version = 2;
+    save();
+  }
+}
 
 /* ---------- Screens, sheets and messages ---------- */
 const SCREENS = ['home', 'lobby', 'play', 'over', 'summary'];
@@ -180,7 +188,8 @@ function frame({ mode, index, total, pz, ref, points }) {
 
 function mount(pz, color, onLock) {
   $('countdown').hidden = true;
-  $('lock-btn').hidden = false;
+  // Timing locks in when you press Stop, so it has no Lock in button
+  $('lock-btn').hidden = Boolean(TESTS[pz.kind].selfLock);
   $('lock-btn').disabled = true;
   $('play-hint').textContent = '';
   $('stage').replaceChildren();
@@ -247,6 +256,7 @@ function answerLine(pz, guess) {
     case 'track': return none ? 'No guess' : `Off by ${R.describe(pz, guess).replace(' off', '')} of the wall`;
     case 'angle': return `Target ${pz.target}°${none ? '' : `, you made ${R.describe(pz, guess)}`}`;
     case 'split': return `Target ${pz.label}${none ? '' : `, you marked ${R.describe(pz, guess)}`}`;
+    case 'time': return `Target ${R.describe(pz)}${none ? '' : `, you stopped at ${R.describe(pz, guess)}`}`;
     default: return '';
   }
 }
@@ -1160,7 +1170,8 @@ function renderDailyCard() {
     $('daily-status').innerHTML = `You scored <span class="daily-score">${done.avg}</span> today. A new puzzle arrives at midnight.`;
     $('daily-btn').textContent = 'See today’s result';
   } else {
-    $('daily-status').textContent = 'The same four puzzles for everyone today. One go each.';
+    const n = ['', 'one', 'two', 'three', 'four', 'five', 'six'][R.dailySet(day).length] || String(R.dailySet(day).length);
+    $('daily-status').textContent = `The same ${n} puzzles for everyone today. One go each.`;
     $('daily-btn').textContent = 'Play today’s puzzle';
   }
 }

@@ -2,7 +2,7 @@
 // Every puzzle is built from a seed, so every browser given the same seed
 // draws exactly the same puzzle. Multiplayer only has to share the seed.
 
-export const KINDS = ['count', 'track', 'angle', 'split'];
+export const KINDS = ['count', 'track', 'angle', 'split', 'time'];
 export const DIFFICULTIES = ['easy', 'normal', 'hard'];
 // Puzzles live in a fixed 4:3 box and are scaled to the screen, so a phone
 // and a monitor see the same geometry.
@@ -172,9 +172,24 @@ function makeSplit(r, difficulty) {
   };
 }
 
+// ---------- Timing: stop the hidden clock at the target ----------
+
+// Easy: whole seconds. Normal and hard: tenths, longer on hard (people drift more over time).
+const TIME = {
+  easy: { lo: 20, hi: 50, step: 10 },
+  normal: { lo: 20, hi: 60, step: 1 },
+  hard: { lo: 40, hi: 99, step: 1 },
+};
+
+function makeTime(r, difficulty) {
+  const c = TIME[difficulty];
+  const tenths = c.step * int(r, Math.ceil(c.lo / c.step), Math.floor(c.hi / c.step));
+  return { kind: 'time', difficulty, target: tenths / 10, answer: tenths / 10 };
+}
+
 // ---------- Rounds and scoring ----------
 
-const MAKERS = { count: makeCount, track: makeTrack, angle: makeAngle, split: makeSplit };
+const MAKERS = { count: makeCount, track: makeTrack, angle: makeAngle, split: makeSplit, time: makeTime };
 
 export function makeRound(kind, seed, difficulty = 'normal') {
   if (!MAKERS[kind]) throw new Error(`Unknown test: ${kind}`);
@@ -201,12 +216,13 @@ export function error(pz, guess) {
     case 'track': return Math.abs(guess - pz.answer) / BOX.h;
     case 'angle': return Math.abs(Math.abs(angleDiff(guess, 0)) - pz.answer);
     case 'split': return Math.abs(guess - pz.answer);
+    case 'time': return Math.abs(guess - pz.answer) / pz.answer;   // as a share of the target
     default: throw new Error(`Unknown test: ${pz.kind}`);
   }
 }
 
 // The error that scores 50, per test.
-export const HALF = { count: Math.log(1.2), track: 0.08, angle: 6, split: 0.03 };
+export const HALF = { count: Math.log(1.2), track: 0.08, angle: 6, split: 0.03, time: 0.08 };
 // Curve shape: above 1 the top is flatter (tiny misses, like hand jitter, cost little) and
 // bigger misses fall away faster. Half the 50-point error scores 78, double scores 14.
 export const SHAPE = 1.5;
@@ -234,6 +250,7 @@ export function validGuess(pz, guess) {
     case 'track': return guess >= 0 && guess <= BOX.h;
     case 'angle': return guess >= -180 && guess <= 180;
     case 'split': return guess >= 0 && guess <= 1;
+    case 'time': return guess > 0 && guess <= 60;
     default: return false;
   }
 }
@@ -246,6 +263,7 @@ export function describe(pz, guess = pz.answer) {
     case 'track': return guess === pz.answer ? 'impact' : `${Math.round(error(pz, guess) * 100)}% off`;
     case 'angle': return `${Math.round(Math.abs(guess))}°`;
     case 'split': return `${Math.round(guess * 100)}%`;
+    case 'time': return guess === pz.answer ? `${pz.answer.toFixed(1)} s` : `${guess.toFixed(2)} s`;
     default: return String(guess);
   }
 }
@@ -255,6 +273,8 @@ export function describe(pz, guess = pz.answer) {
 // Everyone gets the same daily set, built from the date. Day 1 is launch day.
 export const LAUNCH_DAY = '2026-11-10';
 export const DAILY = { kinds: KINDS, laps: 1, difficulty: 'normal' };
+// Day 1 was played with four tests before Timing existed; keep it the same for everyone.
+const dailyKinds = (key) => (dayNumber(key) <= 1 ? KINDS.filter((k) => k !== 'time') : DAILY.kinds);
 
 export function dayKey(date = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
@@ -272,4 +292,4 @@ export function daySeed(key) {
   return h >>> 0;
 }
 
-export const dailySet = (key) => makeSet(daySeed(key), DAILY.kinds, DAILY.laps, DAILY.difficulty);
+export const dailySet = (key) => makeSet(daySeed(key), dailyKinds(key), DAILY.laps, DAILY.difficulty);

@@ -20,7 +20,7 @@ const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const SIGNED_IN_KEY = 'guesstimate-signed-in';
 const CREWS = 'guessCrews';
 const USERS = 'guessUsers';
-const KINDS = ['count', 'track', 'angle', 'split'];
+const KINDS = ['count', 'track', 'angle', 'split', 'time'];
 
 export const isConfigured = () => Boolean(firebaseConfig.apiKey && firebaseConfig.appId);
 

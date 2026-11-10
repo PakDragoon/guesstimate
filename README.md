@@ -12,6 +12,7 @@ Play at `https://pakdragoon.github.io/guesstimate/`.
 | **Track** | A ball flies right, bouncing off the top and bottom, and vanishes into the hatched zone. Mark where it hits the right wall. |
 | **Angle** | Drag the coloured arm until the angle between it and the grey arm matches the target. Either side of the grey arm works. |
 | **Split** | Slide the marker to the point that sits the given fraction (1/3, 37%, 5/7...) of the way along the bar, starting from the round end. |
+| **Timing** | Press Start, count in your head, and press Stop when you think the target time (e.g. 3.0 s) has passed. No clock is shown and nothing on screen moves. Pressing Stop locks your guess in. |
 
 During a round the board is plain paper. The reveal turns it into a measured drawing: a grid fades in, the ball's flight draws itself, and rulers, a protractor and dimension lines show the real answer in green next to every player's guess in their own colour.
 
@@ -21,6 +22,7 @@ During a round the board is plain paper. The reveal turns it into a measured dra
 | Track | Slow, gentle angle, more of the flight visible | About 2 bounces | Fast, steep, about 4 bounces, little visible |
 | Angle | Multiples of 15°, grey arm flat | Any angle, tilted | Any angle, tilted, short grey arm |
 | Split | Halves, thirds, quarters, fifths | Percentages | Percentages or fractions like 5/7, on a tilted bar |
+| Timing | Whole seconds, 2 to 5 s | Tenths, 2.0 to 6.0 s | Tenths, 4.0 to 9.9 s |
 
 ## Three ways to play
 
@@ -44,12 +46,12 @@ Someone new can join mid-game and plays from the current round.
 - **Dropped connection:** a player who stops hearing from the host reconnects by themselves to the same seat and round. A lock-in lost in the drop is sent again. Only if the host has really gone do they see "The room closed".
 - **Time running out:** a guess you've placed but not locked in is locked in for you just before the time limit.
 
-**Daily puzzle.** Four puzzles (one of each test, normal), the same for everyone, new at midnight. One go per day; **Share result** copies a spoiler-free summary for your chat:
+**Daily puzzle.** One puzzle of each test (normal), the same for everyone, new at midnight. One go per day; **Share result** copies a spoiler-free summary for your chat:
 
 ```
 Guesstimate #12: 74/100
-🟩🟨🟩🟨
-Count 88 · Track 61 · Angle 93 · Split 54
+🟩🟨🟩🟨🟩
+Count 88 · Track 61 · Angle 93 · Split 54 · Timing 84
 ```
 
 **Practice.** Pick a difficulty and any tests, one of each. Your best average per difficulty is kept in your browser.
@@ -68,6 +70,7 @@ Every round is scored from 0 to 100: `100 × 0.5 ^ ((miss ÷ 50-point miss) ^ 1.
 | Track | 8% of the wall's height |
 | Angle | 6° |
 | Split | 3% of the line |
+| Timing | 8% of the target time (0.24 s on a 3 s target) |
 
 Verdicts: 95+ Spot on!, 80+ Sharp, 60+ Close, 35+ Ballpark, under 35 Way off. In a room, the highest total wins; a tie on total is broken by the best single round.
 

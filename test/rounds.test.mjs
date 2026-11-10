@@ -14,7 +14,9 @@ for (const d of R.DIFFICULTIES) {
       seen.add(JSON.stringify({ ...a, seed: 0 }));
       checked++;
     }
-    assert.ok(seen.size > 200, `${kind}/${d} repeats too often (${seen.size} unique of 300)`);
+    // Timing has a small set of targets by design: nearly all of them should come up
+    const want = kind === 'time' ? { easy: 4, normal: 37, hard: 54 }[d] : 201;   // nearly all of 4, 41 and 60 targets
+    assert.ok(seen.size >= want, `${kind}/${d} repeats too often (${seen.size} unique of 300)`);
   }
 }
 const setA = R.makeSet(99, R.KINDS, 2, 'normal');
@@ -63,7 +65,14 @@ for (let i = 0; i < 3000; i++) {
   for (const p of [s.a, s.b]) assert.ok(p.x >= 0 && p.x <= R.BOX.w && p.y >= 0 && p.y <= R.BOX.h);
   assert.ok(s.a.x < s.b.x, 'split line runs right to left');
   if (s.percent) assert.equal(Math.round(s.answer * 100), Number(s.label.slice(0, -1)));
-  checked += 4;
+
+  const tm = R.makeRound('time', seed, d);
+  assert.equal(tm.answer, tm.target);
+  const [lo, hi] = { easy: [2, 5], normal: [2, 6], hard: [4, 9.9] }[d];
+  assert.ok(tm.answer >= lo && tm.answer <= hi, `time ${tm.answer} out of range (${d})`);
+  if (d === 'easy') assert.ok(Number.isInteger(tm.answer), 'easy timing is whole seconds');
+  assert.equal(Math.round(tm.answer * 10) / 10, tm.answer, 'timing targets are tenths');
+  checked += 5;
 }
 
 // 3. Scoring: exact is 100, the "half" error is 50, further off scores less, always 0..100
@@ -87,9 +96,9 @@ for (const kind of R.KINDS) {
 }
 rnd = R.mulberry32(3);
 for (let i = 0; i < 20000; i++) {
-  const kind = R.KINDS[i % 4];
+  const kind = R.KINDS[i % R.KINDS.length];
   const pz = sample[kind];
-  const spread = { count: 200, track: R.BOX.h, angle: 360, split: 1 }[kind];
+  const spread = { count: 200, track: R.BOX.h, angle: 360, split: 1, time: 12 }[kind];
   const g1 = rnd() * spread, g2 = rnd() * spread;
   const s1 = R.score(pz, g1), s2 = R.score(pz, g2);
   assert.ok(Number.isInteger(s1) && s1 >= 0 && s1 <= 100);
@@ -112,6 +121,7 @@ assert.ok(R.validGuess(g.count, 40) && !R.validGuess(g.count, 40.5) && !R.validG
 assert.ok(R.validGuess(g.track, 0) && R.validGuess(g.track, R.BOX.h) && !R.validGuess(g.track, R.BOX.h + 1));
 assert.ok(R.validGuess(g.angle, -180) && R.validGuess(g.angle, 45.5) && !R.validGuess(g.angle, 181));
 assert.ok(R.validGuess(g.split, 0.5) && !R.validGuess(g.split, 1.01));
+assert.ok(R.validGuess(g.time, 3.12) && !R.validGuess(g.time, 0) && !R.validGuess(g.time, -1) && !R.validGuess(g.time, 61));
 for (const bad of ['40', null, undefined, NaN, Infinity, {}, [1]]) {
   for (const kind of R.KINDS) assert.equal(R.validGuess(g[kind], bad), false, `${kind} accepted ${String(bad)}`);
 }
@@ -119,6 +129,12 @@ for (const kind of R.KINDS) assert.equal(R.validGuess(g[kind], g[kind].answer), 
 assert.equal(R.describe(g.angle, -40), '40°');
 assert.equal(R.describe(g.split, 0.371), '37%');
 assert.equal(R.describe(g.count, null), '–');
+assert.equal(R.describe(g.time, 3.1234), '3.12 s');
+assert.equal(R.describe({ kind: 'time', answer: 3, target: 3 }), '3.0 s');
+// Timing is judged as a share of the target: 8% off scores 50, half that 78, double 14
+const t3 = { kind: 'time', answer: 3, target: 3 };
+assert.deepEqual([3, 3.05, 3.12, 2.76, 3.24, 3.48].map((x) => R.score(t3, x)), [100, 94, 78, 50, 50, 14]);
+assert.equal(R.score({ kind: 'time', answer: 8, target: 8 }, 8.64), 50, 'same share off scores the same on a longer target');
 
 assert.equal(R.dayNumber('2026-11-10'), 1);
 assert.equal(R.dayNumber('2026-11-11'), 2);
@@ -127,5 +143,7 @@ assert.equal(R.dayKey(new Date(2026, 0, 5)), '2026-01-05');
 assert.deepEqual(R.dailySet('2026-12-01'), R.dailySet('2026-12-01'));
 assert.notDeepEqual(R.dailySet('2026-12-01'), R.dailySet('2026-12-02'));
 assert.deepEqual(R.dailySet('2026-12-01').map((p) => p.kind), R.DAILY.kinds);
+assert.ok(R.dailySet('2026-12-01').some((p) => p.kind === 'time'), 'daily includes Timing from day 2');
+assert.deepEqual(R.dailySet('2026-11-10').map((p) => p.kind), ['count', 'track', 'angle', 'split'], 'day 1 stays as it was played');
 
 console.log('rounds: network, labels and daily checks passed');
