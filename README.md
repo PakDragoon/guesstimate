@@ -102,10 +102,7 @@ Guesstimate uses the same Firebase project as Wordle Party and Thulla (`wordle-p
 
 The domain `pakdragoon.github.io` and the API key's website restriction already cover this game, so sign-in works without console changes.
 
-**Security rules: one step needed.** Firestore has one rules file per database. This repo's `firestore.rules` contains Wordle Party's and Thulla's rules unchanged plus the Guesstimate rules. Until it is published, saving crews and stats fails with a "refused" message (the games still work).
-
-1. Firebase console → Firestore Database → Rules → paste this repo's `firestore.rules` → Publish.
-2. Copy the Guesstimate section into Thulla's `firestore.rules` too, so publishing either file later keeps all three games working. If any game's rules change, copy the change into every repo's file.
+**Security rules:** Firestore has one rules file for the whole project. The same `firestore.rules` is kept in the Thulla, Guesstimate and The Liar repos and covers all four games (Wordle Party, Thulla, Guesstimate, The Liar). After a change, publish it in Firebase console → Firestore Database → Rules, and keep every repo's copy identical, so publishing any of them keeps every game saving.
 
 ## Analytics
 
